@@ -101,26 +101,11 @@ Assets/UdonSharp/Scripts/Editor.meta
 Assets/Udon.meta
 [Aa]ssets/SerializedUdonPrograms*
 
-# UdonSharp stuff
-# Except UdonSharp folder from Packages/* rule
-!Packages/com.merlin.UdonSharp/
-/Assets/UdonSharp/UdonSharpSettings.asset
-/Assets/UdonSharp/UdonSharpSettings.asset.meta
-Assets/Merlin.meta
-Assets/Merlin/Editor.meta
-Assets/Merlin/Editor/EasyEventEditor.cs
-Assets/Merlin/Editor/EasyEventEditor.cs.meta
-Assets/UdonSharp/Settings
-Assets/UdonSharp/Settings.meta
-Assets/UdonSharp/UtilityScripts
-Assets/UdonSharp/UtilityScripts.meta
-Assets/UdonSharp/UdonSharpDataLocator.asset
-Assets/UdonSharp/UdonSharpDataLocator.asset.meta
-Assets/UdonSharp/PrefabBuild
-Assets/UdonSharp/PrefabBuild.meta
+# UdonSharp
+/Assets/UdonSharp
 Assets/UdonSharp.meta
 
-# Package stuff
+# Package
 Assets/Resources
 Assets/Resources.meta
 Assets/Samples
@@ -132,7 +117,6 @@ Packages/com.vrchat.vrcsdk3
 Tools/Nuke/UdonSharpBuild/obj/
 Tools/Nuke/UdonSharpBuild/bin/
 Tools/Nuke/.nuke/temp/
-
 
 # DocFx artifacts
 Packages/com.vrchat.UdonSharp/Editor/obj/
@@ -149,7 +133,6 @@ Assets/Scenes/VRCDefaultWorldScene.unity
 Assets/XR
 Assets/Scenes.meta
 Assets/XR.meta
-Packages/com.vrchat.core.vpm-resolver
 
 Assets/Plugins
 Assets/Plugins.meta
