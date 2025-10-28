@@ -1,0 +1,25 @@
+{
+  "dependencies": {
+    "dev.pardeike.harmony": {
+      "version": "2.4.1+0.7.64"
+    }
+  },
+  "locked": {
+    "com.vrchat.worlds": {
+      "version": "3.9.0",
+      "dependencies": {
+        "com.vrchat.base": "3.9.0"
+      }
+    },
+    "com.vrchat.base": {
+      "version": "3.9.0",
+      "dependencies": {}
+    },
+    "dev.pardeike.harmony": {
+      "version": "2.4.1+0.7.64",
+      "dependencies": {
+        "com.vrchat.base": ">=3.8.0"
+      }
+    }
+  }
+}
