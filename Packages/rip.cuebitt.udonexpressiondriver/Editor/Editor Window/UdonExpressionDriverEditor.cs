@@ -8,6 +8,7 @@ using UnityEditor;
 using UnityEngine;
 using YamlDotNet.RepresentationModel;
 using Object = UnityEngine.Object;
+using PackageInfo = UnityEditor.PackageManager.PackageInfo;
 
 namespace Cuebitt.UdonExpressionDriver.Editor
 {
@@ -36,10 +37,19 @@ namespace Cuebitt.UdonExpressionDriver.Editor
 
         // Extractor
         private string _menuInputPath = "";
+        private string _packageAuthor = "";
+        private string _packageDisplayName = "";
+
+        // Footer info
+        private string _packageVersion = "";
         private string _parametersInputPath = "";
 
         // Scroll view
         private Vector2 _scrollPosition = Vector2.zero;
+
+        // Instructions foldout
+        private bool _showInstructionsSection;
+
 
         private void OnGUI()
         {
@@ -48,6 +58,17 @@ namespace Cuebitt.UdonExpressionDriver.Editor
             EditorGUILayout.BeginVertical(GUI.skin.box);
             DrawHeaderSection();
             EditorGUILayout.EndVertical();
+
+            GUILayout.Space(10);
+
+            _showInstructionsSection = EditorGUILayout.Foldout(_showInstructionsSection, "Instructions", true);
+            if (_showInstructionsSection)
+            {
+                EditorGUILayout.BeginVertical(GUI.skin.box);
+                DrawInstructionsSection();
+                EditorGUILayout.EndVertical();
+            }
+
             GUILayout.Space(10);
 
             EditorGUILayout.BeginVertical(GUI.skin.box);
@@ -63,16 +84,33 @@ namespace Cuebitt.UdonExpressionDriver.Editor
             GUILayout.Space(10);
 
             EditorGUILayout.BeginVertical(GUI.skin.box);
+            DrawMenuGeneratorSection();
+            EditorGUILayout.EndVertical();
+
+            GUILayout.Space(10);
+
+            EditorGUILayout.BeginVertical(GUI.skin.box);
             DrawForwarderSection();
             EditorGUILayout.EndVertical();
 
             GUILayout.Space(10);
 
             EditorGUILayout.BeginVertical(GUI.skin.box);
-            DrawMenuGeneratorSection();
+            DrawFooterInfoSection();
             EditorGUILayout.EndVertical();
 
             EditorGUILayout.EndScrollView();
+        }
+
+        private void OnFocus()
+        {
+            var packageInfo = PackageInfo.FindForAssetPath("Packages/rip.cuebitt.udonexpressiondriver");
+
+            if (packageInfo == null) return;
+
+            _packageVersion = packageInfo.version;
+            _packageAuthor = packageInfo.author.name;
+            _packageDisplayName = packageInfo.displayName;
         }
 
         [MenuItem("Tools/Udon Expression Driver")]
@@ -99,8 +137,45 @@ namespace Cuebitt.UdonExpressionDriver.Editor
             };
 
             EditorGUILayout.BeginVertical(sectionStyle);
-            EditorGUILayout.LabelField("Udon Expressions Driver", headerStyle);
+            EditorGUILayout.LabelField("Udon Expression Driver", headerStyle);
             EditorGUILayout.LabelField("...an Avatars-to-Worlds porting tool for VRChat!", subtitleStyle);
+            EditorGUILayout.EndVertical();
+        }
+
+        private static void DrawInstructionsSection()
+        {
+            var sectionStyle = new GUIStyle
+            {
+                padding = new RectOffset(10, 10, 15, 15)
+            };
+
+            var bodyStyle = new GUIStyle(EditorStyles.label)
+            {
+                wordWrap = true,
+                richText = true
+            };
+
+            var instructionsText = new List<string>
+            {
+                "Use the <b>\"Extract Menu + Parameters\"</b> section to convert VRCExpressionsMenu and VRCExpressionParameters assets to JSON.",
+                "Use the <b>\"Generate Animator Driver Behaviour\"</b> section to generate a driver script for your prop from the JSON file created in <i>step 1.</i>",
+                "Use the <b>\"Generate Menu Prefab\"</b> to section to generate a menu UI prefab that controls the driver behaviour from <i>step 2.</i>",
+                "Use the <b>\"Forward Physbone + Contact Events\"</b> section to add event forwarders to every child GameObject that has a Physbone or Contact component.",
+                "Add the behaviour script from <i>step 2</i> to the <b>prop's root</b> GameObject",
+                "Add the menu prefab from <i>step 3</i> to your scene, then drag the <b>prop's root</b> GameObject to the <i>{placeholder}</i> field of the <b>menu prefab root's</b> behaviour."
+            };
+
+            EditorGUILayout.BeginVertical(sectionStyle);
+            for (var i = 0; i < instructionsText.Count; i++)
+            {
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.LabelField($"{i + 1}.", EditorStyles.boldLabel, GUILayout.Width(20));
+                EditorGUILayout.LabelField(instructionsText[i], bodyStyle, GUILayout.ExpandWidth(true));
+                EditorGUILayout.EndHorizontal();
+
+                EditorGUILayout.Space(5);
+            }
+
             EditorGUILayout.EndVertical();
         }
 
@@ -334,6 +409,32 @@ namespace Cuebitt.UdonExpressionDriver.Editor
             if (GUILayout.Button("Generate Menu"))
             {
             }
+        }
+
+        private void DrawFooterInfoSection()
+        {
+            var paddingStyle = new GUIStyle
+            {
+                padding = new RectOffset(10, 10, 15, 15)
+            };
+            var titleLabelStyle = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                richText = true,
+                fontSize = 16
+            };
+            var subtitleLabelStyle = new GUIStyle(EditorStyles.centeredGreyMiniLabel)
+            {
+                fontSize = 14
+            };
+
+            EditorGUILayout.BeginVertical(paddingStyle);
+
+            EditorGUILayout.LabelField($"<b>{_packageDisplayName}</b> <i>v{_packageVersion}</i>", titleLabelStyle);
+            EditorGUILayout.Space(5);
+            EditorGUILayout.LabelField($"by {_packageAuthor} ❤", subtitleLabelStyle);
+
+            EditorGUILayout.EndVertical();
         }
 
         private static string SerializeMenu(List<Dictionary<string, object>> controls,
