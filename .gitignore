@@ -134,7 +134,7 @@ Assets/XR
 Assets/Scenes.meta
 Assets/XR.meta
 
-Assets/Plugins
+Assets/Plugins/
 Assets/Plugins.meta
 
-Assets/Test Data
+Assets/Test*Data
