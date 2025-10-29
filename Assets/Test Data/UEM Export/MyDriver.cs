@@ -1,10 +1,14 @@
-using Cuebitt.UdonExpressionDriver.Runtime;
+using UdonExpressionDriver.Runtime;
 using UdonSharp;
 using UnityEngine;
+using VRC.SDK3.Data;
 using VRC.SDK3.UdonNetworkCalling;
 
 [UdonBehaviourSyncMode(BehaviourSyncMode.Continuous)]
-public class MyDriver : UEDBehaviour {
+public class MyDriver : UEDBehaviour
+{
+    private DataDictionary parametersDict;
+    
     // Animator controller
     private Animator _animator;
 

@@ -1,6 +1,6 @@
 {
-    "name": "Cuebitt.UdonExpressionDriver.Editor",
-    "rootNamespace": "Cuebitt.UdonExpressionDriver.Editor",
+    "name": "UdonExpressionDriver.Editor",
+    "rootNamespace": "UdonExpressionDriver",
     "references": [
         "GUID:b92e6bd9c4db23d4abe31125ce460627",
         "GUID:84265b35cca3905448e623ef3903f0ff",
@@ -13,7 +13,7 @@
     ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
-    "overrideReferences": true,
+    "overrideReferences": false,
     "precompiledReferences": [
         "Newtonsoft.Json.dll",
         "YamlDotNet.dll"

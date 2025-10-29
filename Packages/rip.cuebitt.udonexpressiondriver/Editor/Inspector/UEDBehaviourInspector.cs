@@ -1,9 +1,9 @@
-using Cuebitt.UdonExpressionDriver.Runtime;
+using UdonExpressionDriver.Runtime;
 using UdonSharpEditor;
 using UnityEngine;
 using UnityEditor;
 
-namespace Cuebitt.UdonExpressionDriver.Editor
+namespace UdonExpressionDriver.Editor
 {
     [CustomEditor(typeof(UEDBehaviour), true)]
     public class UEDBehaviourInspector: UnityEditor.Editor

@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using Cuebitt.UdonExpressionDriver.Editor.Templates;
 using Newtonsoft.Json;
+using UdonExpressionDriver.Editor.Templates;
 using UdonSharp;
 using UnityEditor;
 using UnityEngine;
@@ -10,7 +10,7 @@ using YamlDotNet.RepresentationModel;
 using Object = UnityEngine.Object;
 using PackageInfo = UnityEditor.PackageManager.PackageInfo;
 
-namespace Cuebitt.UdonExpressionDriver.Editor
+namespace UdonExpressionDriver.Editor
 {
     public class UdonExpressionDriverJson
     {

@@ -7,11 +7,12 @@
 //     the code is regenerated.
 // </auto-generated>
 // ------------------------------------------------------------------------------
-namespace Cuebitt.UdonExpressionDriver.Editor.Templates
+namespace UdonExpressionDriver.Editor.Templates
 {
     using System.Text;
     using System.Collections.Generic;
     using System.Linq;
+    using UdonExpressionDriver.Editor.Templates;
     using System;
     
     /// <summary>
@@ -25,7 +26,7 @@ namespace Cuebitt.UdonExpressionDriver.Editor.Templates
         /// </summary>
         public virtual string TransformText()
         {
-            this.Write("using UdonSharp;\nusing UnityEngine;\nusing VRC.SDK3.UdonNetworkCalling;\n\n[UdonBehaviourSyncMode(BehaviourSyncMode.Continuous)]\npublic class ");
+            this.Write("using UdonSharp;\nusing UnityEngine;\nusing VRC.SDK3.UdonNetworkCalling;\nusing VRC.SDK3.Data;\nusing UdonExpressionDriver.Runtime;\n\n[UdonBehaviourSyncMode(BehaviourSyncMode.Continuous)]\npublic class ");
             
             this.Write(this.ToStringHelper.ToStringWithCulture(ClassName));
             
@@ -65,11 +66,11 @@ namespace Cuebitt.UdonExpressionDriver.Editor.Templates
            UEDParameterType.Bool => "bool",
            _ => "float" // this might break
        };
-       var defaultValueFormatted = item.type switch {
+       string defaultValueFormatted = item.type switch {
            UEDParameterType.Int => item.defaultValue.ToString(),
            UEDParameterType.Float => $"{item.defaultValue}f",
            UEDParameterType.Bool =>
-               char.ToLowerInvariant(item.defaultValue.ToString()[0]) + item.defaultValue.ToString()[1..],
+               (char.ToLowerInvariant(item.defaultValue.ToString()[0]) + item.defaultValue.ToString()[1..]).ToString(),
            _ => "0f"
            };
        var animatorMethodTypeFormatted = item.type switch {
@@ -179,11 +180,11 @@ namespace Cuebitt.UdonExpressionDriver.Editor.Templates
            UEDParameterType.Bool => "bool",
            _ => "float" // this might break
        };
-       var defaultValueFormatted = item.type switch {
+       string defaultValueFormatted = item.type switch {
            UEDParameterType.Int => item.defaultValue.ToString(),
            UEDParameterType.Float => $"{item.defaultValue}f",
            UEDParameterType.Bool =>
-               char.ToLowerInvariant(item.defaultValue.ToString()[0]) + item.defaultValue.ToString()[1..],
+               (char.ToLowerInvariant(item.defaultValue.ToString()[0]) + item.defaultValue.ToString()[1..]).ToString(),
            _ => "0f"
            };
        var animatorMethodTypeFormatted = item.type switch {

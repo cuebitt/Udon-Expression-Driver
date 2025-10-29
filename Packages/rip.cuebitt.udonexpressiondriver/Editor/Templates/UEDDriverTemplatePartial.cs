@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Cuebitt.UdonExpressionDriver.Editor.Templates
+namespace UdonExpressionDriver.Editor.Templates
 {
     public enum UEDParameterType
     {

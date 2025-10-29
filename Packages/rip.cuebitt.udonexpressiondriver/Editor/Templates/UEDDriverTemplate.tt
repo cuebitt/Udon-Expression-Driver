@@ -2,9 +2,12 @@
 <#@ import namespace="System.Text" #>
 <#@ import namespace="System.Collections.Generic" #>
 <#@ import namespace="System.Linq" #>
+<#@ import namespace="UdonExpressionDriver.Editor.Templates" #>
 using UdonSharp;
 using UnityEngine;
 using VRC.SDK3.UdonNetworkCalling;
+using VRC.SDK3.Data;
+using UdonExpressionDriver.Runtime;
 
 [UdonBehaviourSyncMode(BehaviourSyncMode.Continuous)]
 public class <#= ClassName #> : UEDBehaviour {
@@ -45,11 +48,11 @@ public class <#= ClassName #> : UEDBehaviour {
            UEDParameterType.Bool => "bool",
            _ => "float" // this might break
        };
-       var defaultValueFormatted = item.type switch {
+       string defaultValueFormatted = item.type switch {
            UEDParameterType.Int => item.defaultValue.ToString(),
            UEDParameterType.Float => $"{item.defaultValue}f",
            UEDParameterType.Bool =>
-               char.ToLowerInvariant(item.defaultValue.ToString()[0]) + item.defaultValue.ToString()[1..],
+               (char.ToLowerInvariant(item.defaultValue.ToString()[0]) + item.defaultValue.ToString()[1..]).ToString(),
            _ => "0f"
            };
        var animatorMethodTypeFormatted = item.type switch {
@@ -90,11 +93,11 @@ public class <#= ClassName #> : UEDBehaviour {
            UEDParameterType.Bool => "bool",
            _ => "float" // this might break
        };
-       var defaultValueFormatted = item.type switch {
+       string defaultValueFormatted = item.type switch {
            UEDParameterType.Int => item.defaultValue.ToString(),
            UEDParameterType.Float => $"{item.defaultValue}f",
            UEDParameterType.Bool =>
-               char.ToLowerInvariant(item.defaultValue.ToString()[0]) + item.defaultValue.ToString()[1..],
+               (char.ToLowerInvariant(item.defaultValue.ToString()[0]) + item.defaultValue.ToString()[1..]).ToString(),
            _ => "0f"
            };
        var animatorMethodTypeFormatted = item.type switch {

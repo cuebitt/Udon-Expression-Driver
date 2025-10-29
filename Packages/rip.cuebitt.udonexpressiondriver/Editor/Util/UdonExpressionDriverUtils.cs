@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 using UnityEngine;
 using Random = System.Random;
 
-namespace Cuebitt.UdonExpressionDriver.Editor
+namespace UdonExpressionDriver.Editor
 {
     public static class UdonExpressionDriverUtils
     {
