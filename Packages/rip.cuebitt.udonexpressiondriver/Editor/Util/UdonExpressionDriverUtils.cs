@@ -1,13 +1,12 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using UnityEngine;
-using Random = System.Random;
 
 namespace UdonExpressionDriver.Editor
 {
     public static class UdonExpressionDriverUtils
     {
-        private static readonly Random Random = new();
+        private static readonly System.Random Random = new();
 
         public static string ToValidClassName(string input)
         {
@@ -23,11 +22,12 @@ namespace UdonExpressionDriver.Editor
                 if (string.IsNullOrEmpty(part))
                     continue;
 
-                // Capitalize only the first letter of the part
-                if (char.IsLetter(part[0]))
-                    sb.Append(char.ToUpper(part[0]) + part[1..]);
+                // Capitalize only the first letter of the part; handle single-char parts safely
+                var first = char.ToUpperInvariant(part[0]).ToString();
+                if (part.Length > 1)
+                    sb.Append(first + part[1..]);
                 else
-                    sb.Append(part); // keep digits etc.
+                    sb.Append(first);
             }
 
             if (sb.Length == 0)
@@ -42,7 +42,17 @@ namespace UdonExpressionDriver.Editor
 
         public static string ToRelativePath(string path)
         {
-            return "Assets" + path[Application.dataPath.Length..];
+            // Check for null or empty path
+            if (string.IsNullOrEmpty(path))
+                return path;
+            
+            // Convert absolute path to relative if it starts with Application.dataPath
+            var dataPath = Application.dataPath;
+            if (path.StartsWith(dataPath))
+                return "Assets" + path[dataPath.Length..];
+            
+            // Otherwise, return the original path as-is
+            return path;
         }
     }
 }

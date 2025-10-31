@@ -41,7 +41,7 @@ namespace UdonExpressionDriver.Editor
         private string _packageVersion = "";
         private string _packageAuthor = "";
         private string _packageDisplayName = "";
-        
+
         // Scroll view
         private Vector2 _scrollPosition = Vector2.zero;
 
