@@ -19,15 +19,15 @@ namespace UdonExpressionDriver.Editor
     public class UdonExpressionDriverEditor : EditorWindow
     {
         // Extractor
+        private string _menuInputPath = "";
         private string _parametersInputPath = "";
-        private string _extractedJsonInputPath = "";
         private string _extractedJsonOutputPath = "";
         
         // Class generator
-        private string _menuInputPath = "";
+        private string _extractedJsonInputPath = "";
         private string _generatedClassName = "";
         private string _generatedClassOutputPath = "";
-        
+
         // Menu generator
         private string _menuGeneratorInputJsonPath = "";
         private string _menuGeneratorOutputPath = "";
@@ -36,17 +36,61 @@ namespace UdonExpressionDriver.Editor
         private GameObject _forwarderGameObject;
         private bool _forwarderForwardContacts = true;
         private bool _forwarderForwardPhysbones = true;
-        
+
         // Footer info
         private string _packageVersion = "";
         private string _packageAuthor = "";
         private string _packageDisplayName = "";
 
-        // Scroll view
+        // Other UI state
         private Vector2 _scrollPosition = Vector2.zero;
-
-        // Instructions foldout
         private bool _showInstructionsSection;
+        
+        // Cached GUIStyles
+        private GUIStyle _headerStyle;
+        private GUIStyle _subtitleStyle;
+        private GUIStyle _headerSectionStyle;
+        private GUIStyle _richTextWrapStyle;
+        private GUIStyle _boxPaddingStyle;
+        private GUIStyle _footerTitleStyle;
+        private GUIStyle _footerSubtitleStyle;
+
+        private void OnEnable()
+        {
+            _headerStyle ??= new GUIStyle(EditorStyles.label)
+            {
+                fontSize = 20,
+                alignment = TextAnchor.LowerCenter
+            };
+            _subtitleStyle ??= new GUIStyle(EditorStyles.centeredGreyMiniLabel)
+            {
+                fontSize = 12
+            };
+            _headerSectionStyle ??= new GUIStyle
+            {
+                padding = new RectOffset(15, 15, 15, 15),
+                margin = new RectOffset(5, 5, 5, 5)
+            };
+            _richTextWrapStyle ??= new GUIStyle(EditorStyles.label)
+            {
+                wordWrap = true,
+                richText = true
+            };
+            _boxPaddingStyle ??= new GUIStyle
+            {
+                padding = new RectOffset(10, 10, 15, 15)
+            };
+            _footerTitleStyle ??= new GUIStyle(EditorStyles.label)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                richText = true,
+                fontSize = 16
+            };
+            _footerSubtitleStyle ??= new GUIStyle(EditorStyles.centeredGreyMiniLabel)
+            {
+                fontSize = 14
+            };
+        }
 
         private void OnGUI()
         {
@@ -116,42 +160,16 @@ namespace UdonExpressionDriver.Editor
             GetWindow<UdonExpressionDriverEditor>("Udon Expression Driver");
         }
 
-        private static void DrawHeaderSection()
+        private void DrawHeaderSection()
         {
-            var headerStyle = new GUIStyle(EditorStyles.boldLabel)
-            {
-                fontSize = 20,
-                alignment = TextAnchor.LowerCenter
-            };
-            var subtitleStyle = new GUIStyle(EditorStyles.centeredGreyMiniLabel)
-            {
-                fontSize = 12
-            };
-            var sectionStyle = new GUIStyle
-            {
-                padding = new RectOffset(15, 15, 15, 15),
-                margin = new RectOffset(5, 5, 5, 5)
-            };
-
-            EditorGUILayout.BeginVertical(sectionStyle);
-            EditorGUILayout.LabelField("Udon Expression Driver", headerStyle);
-            EditorGUILayout.LabelField("...an Avatars-to-Worlds porting tool for VRChat!", subtitleStyle);
+            EditorGUILayout.BeginVertical(_headerSectionStyle);
+            EditorGUILayout.LabelField("Udon Expression Driver", _headerStyle);
+            EditorGUILayout.LabelField("...an Avatars-to-Worlds porting tool for VRChat!", _subtitleStyle);
             EditorGUILayout.EndVertical();
         }
 
-        private static void DrawInstructionsSection()
+        private void DrawInstructionsSection()
         {
-            var sectionStyle = new GUIStyle
-            {
-                padding = new RectOffset(10, 10, 15, 15)
-            };
-
-            var bodyStyle = new GUIStyle(EditorStyles.label)
-            {
-                wordWrap = true,
-                richText = true
-            };
-
             var instructionsText = new List<string>
             {
                 "Use the <b>\"Extract Menu + Parameters\"</b> section to convert VRCExpressionsMenu and VRCExpressionParameters assets to JSON.",
@@ -162,12 +180,12 @@ namespace UdonExpressionDriver.Editor
                 "Add the menu prefab from <i>step 3</i> to your scene, then drag the <b>prop's root</b> GameObject to the <i>{placeholder}</i> field of the <b>menu prefab root's</b> behaviour."
             };
 
-            EditorGUILayout.BeginVertical(sectionStyle);
+            EditorGUILayout.BeginVertical(_boxPaddingStyle);
             for (var i = 0; i < instructionsText.Count; i++)
             {
                 EditorGUILayout.BeginHorizontal();
                 EditorGUILayout.LabelField($"{i + 1}.", EditorStyles.boldLabel, GUILayout.Width(20));
-                EditorGUILayout.LabelField(instructionsText[i], bodyStyle, GUILayout.ExpandWidth(true));
+                EditorGUILayout.LabelField(instructionsText[i], _richTextWrapStyle, GUILayout.ExpandWidth(true));
                 EditorGUILayout.EndHorizontal();
 
                 EditorGUILayout.Space(5);
@@ -391,7 +409,7 @@ namespace UdonExpressionDriver.Editor
                 // TODO remove
                 EditorUtility.DisplayDialog("[UED] Error", "This feature is unimplemented.", "OK");
                 return;
-                
+
                 if (_forwarderGameObject == null)
                     Debug.LogError("[Udon Expression Driver] Error: Specify a GameObject to add forwarders to.");
                 else if (PrefabUtility.IsPartOfPrefabAsset(_forwarderGameObject))
@@ -433,35 +451,17 @@ namespace UdonExpressionDriver.Editor
 
             GUILayout.Space(10);
             if (GUILayout.Button("Generate Menu"))
-            {
                 // TODO remove
                 EditorUtility.DisplayDialog("[UED] Error", "This feature is unimplemented.", "OK");
-                return;
-            }
         }
 
         private void DrawFooterInfoSection()
         {
-            var paddingStyle = new GUIStyle
-            {
-                padding = new RectOffset(10, 10, 15, 15)
-            };
-            var titleLabelStyle = new GUIStyle(GUI.skin.label)
-            {
-                alignment = TextAnchor.MiddleCenter,
-                richText = true,
-                fontSize = 16
-            };
-            var subtitleLabelStyle = new GUIStyle(EditorStyles.centeredGreyMiniLabel)
-            {
-                fontSize = 14
-            };
+            EditorGUILayout.BeginVertical(_boxPaddingStyle);
 
-            EditorGUILayout.BeginVertical(paddingStyle);
-
-            EditorGUILayout.LabelField($"<b>{_packageDisplayName}</b> <i>v{_packageVersion}</i>", titleLabelStyle);
+            EditorGUILayout.LabelField($"<b>{_packageDisplayName}</b> <i>v{_packageVersion}</i>", _footerTitleStyle);
             EditorGUILayout.Space(5);
-            EditorGUILayout.LabelField($"by {_packageAuthor} ❤", subtitleLabelStyle);
+            EditorGUILayout.LabelField($"by {_packageAuthor} ❤", _footerSubtitleStyle);
 
             EditorGUILayout.EndVertical();
         }
