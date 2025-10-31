@@ -7,9 +7,9 @@ namespace UdonExpressionDriver.Editor.Templates
     {
         // Meta
         public string ClassName;
-    
+        public IList<VRCExpressionsMenu.Control> Controls;
+
         // Parameters
         public IList<VRCExpressionParameters.Parameter> Parameters;
-        public IList<VRCExpressionsMenu.Control> Controls;
     }
 }

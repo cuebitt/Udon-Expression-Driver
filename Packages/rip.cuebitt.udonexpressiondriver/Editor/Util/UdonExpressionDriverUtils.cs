@@ -8,7 +8,7 @@ namespace UdonExpressionDriver.Editor
     public static class UdonExpressionDriverUtils
     {
         private static readonly Random Random = new();
-        
+
         public static string ToValidClassName(string input)
         {
             if (string.IsNullOrWhiteSpace(input))

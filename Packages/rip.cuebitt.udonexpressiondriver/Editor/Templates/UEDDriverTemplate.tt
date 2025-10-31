@@ -1,8 +1,4 @@
 <#@ template language="C#" hostspecific="false" linePragmas="false" #>
-<#@ import namespace="System.Text" #>
-<#@ import namespace="System.Collections.Generic" #>
-<#@ import namespace="System.Linq" #>
-<#@ import namespace="VRC.SDK3.Avatars.ScriptableObjects" #>
 using UdonSharp;
 using UnityEngine;
 using VRC.SDK3.UdonNetworkCalling;
@@ -26,41 +22,43 @@ public class <#= ClassName #> : UEDBehaviour {
     [NetworkCallable]
     public void ResetParameters()
     {
-<# foreach (var item in Parameters.ToList())
-   {
-       var publicName = char.ToUpperInvariant(item.name[0]) + item.name[1..];
-       var privateName = "_" + char.ToLowerInvariant(item.name[0]) + item.name[1..];
+<#
+    foreach (var item in Parameters.ToList())
+    {
+        var publicName = char.ToUpperInvariant(item.name[0]) + item.name[1..];
+        var privateName = "_" + char.ToLowerInvariant(item.name[0]) + item.name[1..];
 #>
         <#= publicName #> = <#= privateName + "Default" #>;
 <#
-   }
+    }
 #>
     }
 #region Synced Variables
-<# foreach (var item in Parameters.ToList().Where(p => p.networkSynced))
-   {
-       var publicName = char.ToUpperInvariant(item.name[0]) + item.name[1..];
-       var privateName = "_" + char.ToLowerInvariant(item.name[0]) + item.name[1..];
-       var typeName = item.valueType switch
-       {
-           VRCExpressionParameters.ValueType.Int => "int",
-           VRCExpressionParameters.ValueType.Float => "float",
-           VRCExpressionParameters.ValueType.Bool => "bool",
-           _ => "float" // this might break
-       };
-       string defaultValueFormatted = item.valueType switch {
-           VRCExpressionParameters.ValueType.Int => item.defaultValue.ToString(),
-           VRCExpressionParameters.ValueType.Float => $"{item.defaultValue}f",
-           VRCExpressionParameters.ValueType.Bool => 
-               Convert.ToBoolean((float)item.defaultValue).ToString().ToLower(),
-           _ => "0f"
-           };
-       var animatorMethodTypeFormatted = item.valueType switch {
-           VRCExpressionParameters.ValueType.Int => "Integer",
-           VRCExpressionParameters.ValueType.Float => "Float",
-           VRCExpressionParameters.ValueType.Bool => "Bool",
-           _ => "Float"
-           };
+<#
+    foreach (var item in Parameters.ToList().Where(p => p.networkSynced))
+    {
+        var publicName = char.ToUpperInvariant(item.name[0]) + item.name[1..];
+        var privateName = "_" + char.ToLowerInvariant(item.name[0]) + item.name[1..];
+        var typeName = item.valueType switch
+        {
+            VRCExpressionParameters.ValueType.Int => "int",
+            VRCExpressionParameters.ValueType.Float => "float",
+            VRCExpressionParameters.ValueType.Bool => "bool",
+            _ => "float" // this might break
+            };
+        string defaultValueFormatted = item.valueType switch {
+            VRCExpressionParameters.ValueType.Int => item.defaultValue.ToString(),
+            VRCExpressionParameters.ValueType.Float => $"{item.defaultValue}f",
+            VRCExpressionParameters.ValueType.Bool => 
+                Convert.ToBoolean((float)item.defaultValue).ToString().ToLower(),
+            _ => "0f"
+            };
+        var animatorMethodTypeFormatted = item.valueType switch {
+            VRCExpressionParameters.ValueType.Int => "Integer",
+            VRCExpressionParameters.ValueType.Float => "Float",
+            VRCExpressionParameters.ValueType.Bool => "Bool",
+            _ => "Float"
+            };
 #>
     private readonly int <#= privateName + "Hash" #> = Animator.StringToHash("<#= item.name #>");
     private readonly <#= typeName #> <#= privateName + "Default" #> = <#= defaultValueFormatted #>;
@@ -73,39 +71,40 @@ public class <#= ClassName #> : UEDBehaviour {
         set
         {
             <#= privateName #> = value;
-            _animator.Set<#= animatorMethodTypeFormatted  #>(<#= privateName + "Hash" #>, value);
+            _animator.Set<#= animatorMethodTypeFormatted #>(<#= privateName + "Hash" #>, value);
         }
     }
 <#
-   }
+    }
 #>
 #endregion
 
 #region Local Variables
-<# foreach (var item in Parameters.ToList().Where(p => !p.networkSynced))
-   {
-       var publicName = char.ToUpperInvariant(item.name[0]) + item.name[1..];
-       var privateName = "_" + char.ToLowerInvariant(item.name[0]) + item.name[1..];
-       var typeName = item.valueType switch
-       {
-           VRCExpressionParameters.ValueType.Int => "int",
-           VRCExpressionParameters.ValueType.Float => "float",
-           VRCExpressionParameters.ValueType.Bool => "bool",
-           _ => "float" // this might break
-       };
-       string defaultValueFormatted = item.valueType switch {
-           VRCExpressionParameters.ValueType.Int => item.defaultValue.ToString(),
-           VRCExpressionParameters.ValueType.Float => $"{item.defaultValue}f",
-           VRCExpressionParameters.ValueType.Bool => 
-               Convert.ToBoolean((float)item.defaultValue).ToString().ToLower(),
-           _ => "0f"
-           };
-       var animatorMethodTypeFormatted = item.valueType switch {
-           VRCExpressionParameters.ValueType.Int => "Integer",
-           VRCExpressionParameters.ValueType.Float => "Float",
-           VRCExpressionParameters.ValueType.Bool => "Bool",
-           _ => "Float"
-           };
+<#
+    foreach (var item in Parameters.ToList().Where(p => !p.networkSynced))
+    {
+        var publicName = char.ToUpperInvariant(item.name[0]) + item.name[1..];
+        var privateName = "_" + char.ToLowerInvariant(item.name[0]) + item.name[1..];
+        var typeName = item.valueType switch
+        {
+            VRCExpressionParameters.ValueType.Int => "int",
+            VRCExpressionParameters.ValueType.Float => "float",
+            VRCExpressionParameters.ValueType.Bool => "bool",
+            _ => "float" // this might break
+            };
+        string defaultValueFormatted = item.valueType switch {
+            VRCExpressionParameters.ValueType.Int => item.defaultValue.ToString(),
+            VRCExpressionParameters.ValueType.Float => $"{item.defaultValue}f",
+            VRCExpressionParameters.ValueType.Bool => 
+                Convert.ToBoolean((float)item.defaultValue).ToString().ToLower(),
+            _ => "0f"
+            };
+        var animatorMethodTypeFormatted = item.valueType switch {
+            VRCExpressionParameters.ValueType.Int => "Integer",
+            VRCExpressionParameters.ValueType.Float => "Float",
+            VRCExpressionParameters.ValueType.Bool => "Bool",
+            _ => "Float"
+            };
 #>
     private readonly int <#= privateName + "Hash" #> = Animator.StringToHash("<#= item.name #>");
     private readonly <#= typeName #> <#= privateName + "Default" #> = <#= defaultValueFormatted #>;
@@ -122,7 +121,7 @@ public class <#= ClassName #> : UEDBehaviour {
         }
     }
 <#
-   }
+    }
 #>
 #endregion
 }

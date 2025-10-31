@@ -365,7 +365,8 @@ namespace UdonExpressionDriver.Editor.Util
                 return null;
             }
 
-            void TryAddMethodSignatureReferences(MethodDefinition methodDef, Queue<MemberReference> q, HashSet<string> keepT,
+            void TryAddMethodSignatureReferences(MethodDefinition methodDef, Queue<MemberReference> q,
+                HashSet<string> keepT,
                 HashSet<string> keepM)
             {
                 TryAddTypeReference(methodDef.ReturnType, q, keepT);

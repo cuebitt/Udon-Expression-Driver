@@ -4,6 +4,5 @@ namespace UdonExpressionDriver.Runtime
 {
     public class UEDBehaviour : UdonSharpBehaviour
     {
-       
     }
 }

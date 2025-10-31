@@ -15,21 +15,20 @@ namespace UdonExpressionDriver.Editor.Util
     public static class UEDInstaller
     {
         private const string AssemblyGuid = "67cc4cb7839cd3741b63733d5adf0442";
-        
+
         static UEDInstaller()
         {
-            UEDInstalled = EnsureDllExists();
+            UedInstalled = EnsureDllExists();
         }
 
-        public static Task UEDInstalled { get; private set; }
+        public static Task UedInstalled { get; private set; }
 
-        [MenuItem("Tools/Udon Expression Driver/Install Udon Expression Driver")]
         private static async Task EnsureDllExists()
         {
             // Check for the assembly in UED's directory or VRChat's directory
             var assemblyPath =
                 Path.GetFullPath("Packages/rip.cuebitt.udonexpressiondriver/Editor/Plugins/VRCSDK3A.dll");
-            var defaultAssemblyPath = 
+            var defaultAssemblyPath =
                 Path.GetFullPath("Packages/com.vrchat.avatars/Runtime/VRCSDK/Plugins/VRCSDK3A.dll");
             if (File.Exists(assemblyPath) || File.Exists(defaultAssemblyPath))
             {
@@ -72,12 +71,12 @@ namespace UdonExpressionDriver.Editor.Util
 
             Debug.Log("[UdonExpressionDriver] Processing downloaded assembly...");
             AssemblyStripper.StripExcept(avatarsDllPath, whitelist, assemblyPath);
-            
-            Debug.Log($"[UdonExpressionDriver] Importing downloaded assembly...");
+
+            Debug.Log("[UdonExpressionDriver] Importing downloaded assembly...");
             AssetDatabase.ImportAsset(assemblyPath, ImportAssetOptions.ForceSynchronousImport);
             AssetDatabase.Refresh();
             GuidChanger.ChangeGuid(assemblyPath, AssemblyGuid);
-            
+
 
             Debug.Log("[UdonExpressionDriver] Finished installing Udon Expression Driver!");
         }
@@ -95,8 +94,7 @@ namespace UdonExpressionDriver.Editor.Util
             {
                 req.downloadHandler = new DownloadHandlerFile(tempZip);
                 var resp = req.SendWebRequest();
-                
-                
+
 
                 while (!resp.isDone)
                 {
@@ -106,9 +104,10 @@ namespace UdonExpressionDriver.Editor.Util
 
                 if (req.result != UnityWebRequest.Result.Success)
                 {
-                    Debug.LogError($"[UdonExpressionDriver] Failed to download avatars package: status: {req.result}" );
+                    Debug.LogError($"[UdonExpressionDriver] Failed to download avatars package: status: {req.result}");
                     return false;
                 }
+
                 Debug.Log("[UdonExpressionDriver] Extracting avatars package...");
 
                 try
