@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
@@ -6,7 +5,7 @@ using UdonExpressionDriver.Editor.Templates;
 using UdonSharp;
 using UnityEditor;
 using UnityEngine;
-using YamlDotNet.RepresentationModel;
+using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;
 using PackageInfo = UnityEditor.PackageManager.PackageInfo;
 
@@ -43,6 +42,7 @@ namespace UdonExpressionDriver.Editor
         // Footer info
         private string _packageVersion = "";
         private string _parametersInputPath = "";
+
 
         // Scroll view
         private Vector2 _scrollPosition = Vector2.zero;
@@ -240,8 +240,6 @@ namespace UdonExpressionDriver.Editor
                     var className = UdonExpressionDriverUtils.ToValidClassName(_generatedClassName);
 
 
-                    Debug.Log($"{_generatedClassName} -> {className}");
-
                     var template = new UEDDriverTemplate
                     {
                         ClassName = className,
@@ -315,7 +313,6 @@ namespace UdonExpressionDriver.Editor
                 var fileName = string.IsNullOrEmpty(_menuInputPath)
                     ? "UdonExpressionsMenu.json"
                     : Path.GetFileName(Path.ChangeExtension(_menuInputPath, "json"));
-                Debug.Log(fileName);
 
                 var path = EditorUtility.SaveFilePanel("Save JSON File", "Assets", fileName, "json");
                 if (!string.IsNullOrEmpty(path)) _extractedJsonOutputPath = path;
@@ -327,13 +324,41 @@ namespace UdonExpressionDriver.Editor
             if (GUILayout.Button("Extract"))
             {
                 Debug.Log("[Udon Expression Driver] Extracting controls...");
-                var controls = ExtractControls(_menuInputPath);
+                //var controls = ExtractControls(_menuInputPath);
+                var controlsAsset =
+                    AssetDatabase.LoadAssetAtPath<VRCExpressionsMenu>(
+                        UdonExpressionDriverUtils.ToRelativePath(_menuInputPath));
+
+                if (controlsAsset == null)
+                {
+                    Debug.LogError("[Udon Expression Driver] Could not locate menu asset.");
+                    return;
+                }
+
+                var controls = controlsAsset.controls;
 
                 Debug.Log("[Udon Expression Driver] Extracting parameters...");
-                var parameters = ExtractParameters(_parametersInputPath);
+                var parametersAsset =
+                    AssetDatabase.LoadAssetAtPath<VRCExpressionParameters>(
+                        UdonExpressionDriverUtils.ToRelativePath(_parametersInputPath));
+
+                if (parametersAsset == null)
+                {
+                    Debug.LogError("[Udon Expression Driver] Could not locate parameters asset.");
+                    return;
+                }
+
+                var parameters = parametersAsset.parameters;
 
                 Debug.Log("[Udon Expression Driver] Creating JSON...");
-                var json = SerializeMenu(controls, parameters);
+                var export = new Dictionary<string, object>
+                {
+                    { "parameters", parameters },
+                    { "controls", controls }
+                };
+                var json = UEDSerializer.Serialize(export);
+                Debug.Log("[Udon Expression Driver] Writing JSON...");
+                Debug.Log(json);
                 File.WriteAllText(_extractedJsonOutputPath, json);
 
                 _extractedJsonInputPath = _extractedJsonOutputPath;
@@ -435,216 +460,6 @@ namespace UdonExpressionDriver.Editor
             EditorGUILayout.LabelField($"by {_packageAuthor} ❤", subtitleLabelStyle);
 
             EditorGUILayout.EndVertical();
-        }
-
-        private static string SerializeMenu(List<Dictionary<string, object>> controls,
-            List<Dictionary<string, object>> parameters)
-        {
-            var output = new Dictionary<string, object>
-            {
-                { "controls", controls },
-                { "parameters", parameters }
-            };
-
-            return JsonConvert.SerializeObject(output, Formatting.Indented);
-        }
-
-        private static List<Dictionary<string, object>> ExtractParameters(string yamlFilePath)
-        {
-            if (!File.Exists(yamlFilePath))
-                throw new FileNotFoundException("YAML file not found", yamlFilePath);
-
-            using var reader = new StreamReader(yamlFilePath);
-            var yaml = new YamlStream();
-            yaml.Load(reader);
-
-            var root = (YamlMappingNode)yaml.Documents[0].RootNode;
-
-            // MonoBehaviour section
-            if (!root.Children.TryGetValue("MonoBehaviour", out var monoNode) || !(monoNode is YamlMappingNode mono))
-                throw new Exception("No MonoBehaviour section found in YAML.");
-
-            // Parameters section
-            if (!mono.Children.TryGetValue("parameters", out var paramNode) ||
-                !(paramNode is YamlSequenceNode paramList))
-                throw new Exception("No Parameters section found in MonoBehaviour.");
-
-            // Parsed parameters
-            var output = new List<Dictionary<string, object>>();
-
-            foreach (var yamlNode in paramList)
-            {
-                var pNode = (YamlMappingNode)yamlNode;
-                var dict = new Dictionary<string, object>();
-
-                // Parameter name string
-                dict["name"] = pNode.GetString("name");
-
-                // saved and networkSynced as bool
-                dict["saved"] = pNode.GetInt("saved") != 0;
-                dict["networkSynced"] = pNode.GetInt("networkSynced") != 0;
-
-                // Include type if exists
-                if (pNode.Children.ContainsKey("valueType"))
-                {
-                    var type = pNode.GetInt("valueType");
-                    dict["type"] = type switch
-                    {
-                        0 => "int",
-                        1 => "float",
-                        2 => "bool",
-                        _ => "float"
-                    };
-                }
-
-                if (pNode.Children.ContainsKey("defaultValue") && pNode.Children.ContainsKey("valueType"))
-                {
-                    var value = float.Parse(pNode.GetString("defaultValue"));
-                    dict["defaultValue"] = (int)dict["type"] switch
-                    {
-                        0 => (int)value,
-                        1 => value,
-                        2 => Convert.ToBoolean(value),
-                        _ => 0f
-                    };
-                }
-
-                output.Add(dict);
-            }
-
-            return output;
-        }
-
-        private static List<Dictionary<string, object>> ExtractControls(string yamlFilePath)
-        {
-            if (!File.Exists(yamlFilePath))
-            {
-                Debug.LogError("[Udon Expression Driver] Input file not found!");
-                return new List<Dictionary<string, object>>();
-            }
-
-            using var reader = new StreamReader(yamlFilePath);
-            var yaml = new YamlStream();
-            yaml.Load(reader);
-
-            var root = (YamlMappingNode)yaml.Documents[0].RootNode;
-
-// The MonoBehaviour section
-            if (!root.Children.TryGetValue("MonoBehaviour", out var monoNode) || !(monoNode is YamlMappingNode mono))
-            {
-                Debug.LogError("[Udon Expression Driver] No 'MonoBehaviour' section found.");
-                return new List<Dictionary<string, object>>();
-            }
-
-// Access controls
-            if (!mono.Children.TryGetValue("controls", out var controlsNode) ||
-                !(controlsNode is YamlSequenceNode controlsList))
-            {
-                Debug.LogError("[Udon Expression Driver] No 'controls' found in MonoBehaviour.");
-                return new List<Dictionary<string, object>>();
-            }
-
-            var outputList = new List<Dictionary<string, object>>();
-            foreach (var yamlNode in controlsList)
-            {
-                var controlNode = (YamlMappingNode)yamlNode;
-                outputList.Add(ProcessControl(controlNode));
-            }
-
-            return outputList;
-        }
-
-        private static Dictionary<string, object> ProcessControl(YamlMappingNode controlNode)
-        {
-            var result = new Dictionary<string, object>();
-
-            // name
-            result["name"] = controlNode.GetString("name");
-
-            // type
-            result["type"] = controlNode.GetInt("type");
-
-            // parameter
-            if (controlNode.Children.TryGetValue("parameter", out var paramNode) && paramNode is YamlMappingNode p)
-                result["parameter"] = p.GetString("name");
-
-            // icon
-            if (controlNode.Children.TryGetValue("icon", out var iconNode) && iconNode is YamlMappingNode i)
-                result["icon"] = i.GetString("icon");
-            else
-                result["icon"] = null;
-
-
-            // subMenu
-            if (controlNode.Children.TryGetValue("subMenu", out var submenuNode) && submenuNode is YamlMappingNode s)
-            {
-                var guid = s.GetString("guid");
-
-                if (!string.IsNullOrEmpty(guid))
-                {
-                    var submenuPath = AssetDatabase.GUIDToAssetPath(guid);
-                    if (File.Exists(submenuPath))
-                        result["subMenu"] = ExtractControls(submenuPath);
-                    else
-                        result["subMenu"] = new List<Dictionary<string, object>>();
-                }
-                else
-                {
-                    result["subMenu"] = new List<Dictionary<string, object>>();
-                }
-            }
-
-            // subParameters
-            if (controlNode.Children.TryGetValue("subParameters", out var spNode) && spNode is YamlSequenceNode spList)
-            {
-                var names = new List<string>();
-                foreach (var yamlNode in spList)
-                {
-                    var sp = (YamlMappingNode)yamlNode;
-                    names.Add(sp.GetString("name"));
-                }
-
-                result["subParameters"] = names;
-            }
-
-            // labels
-            if (controlNode.Children.TryGetValue("labels", out var labelNode) && labelNode is YamlSequenceNode labels)
-            {
-                var labelList = new List<Dictionary<string, string>>();
-                foreach (var yamlNode in labels)
-                {
-                    var l = (YamlMappingNode)yamlNode;
-                    var labelDict = new Dictionary<string, string>();
-                    labelDict["name"] = l.GetString("name");
-                    if (l.Children.TryGetValue("icon", out var liNode) && liNode is YamlMappingNode li)
-                        labelDict["icon"] = li.GetString("guid");
-                    else
-                        labelDict["icon"] = "";
-                    labelList.Add(labelDict);
-                }
-
-                result["labels"] = labelList;
-            }
-
-            return result;
-        }
-    }
-
-// Extension methods for safely reading YamlMappingNode
-    public static class YamlExtensions
-    {
-        public static string GetString(this YamlMappingNode node, string key, string defaultValue = "")
-        {
-            if (node.Children.TryGetValue(key, out var valueNode))
-                return valueNode.ToString();
-            return defaultValue;
-        }
-
-        public static int GetInt(this YamlMappingNode node, string key, int defaultValue = 0)
-        {
-            if (node.Children.TryGetValue(key, out var valueNode) && int.TryParse(valueNode.ToString(), out var result))
-                return result;
-            return defaultValue;
         }
     }
 }
