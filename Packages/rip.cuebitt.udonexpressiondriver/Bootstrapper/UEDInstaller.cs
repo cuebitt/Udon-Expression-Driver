@@ -18,67 +18,74 @@ namespace UdonExpressionDriver.Editor.Util
 
         static UEDInstaller()
         {
-            UedInstalled = EnsureDllExists();
+            Installed = Install();
         }
 
-        public static Task UedInstalled { get; private set; }
+        public static Task Installed { get; private set; }
 
-        private static async Task EnsureDllExists()
+        private static async Task<bool> Install()
         {
-            // Check for the assembly in UED's directory or VRChat's directory
-            var assemblyPath =
-                Path.GetFullPath("Packages/rip.cuebitt.udonexpressiondriver/Editor/Plugins/VRCSDK3A.dll");
-            var defaultAssemblyPath =
-                Path.GetFullPath("Packages/com.vrchat.avatars/Runtime/VRCSDK/Plugins/VRCSDK3A.dll");
-            if (File.Exists(assemblyPath) || File.Exists(defaultAssemblyPath))
+            // Check for the UED-relevant files from the VRChat Avatars SDK
+            if (CheckForExisting())
             {
                 Debug.Log("[UdonExpressionDriver] Udon Expression Driver is already installed.");
-                return;
+                return true;
             }
 
             Debug.Log("[UdonExpressionDriver] Installing Udon Expression Driver...");
 
-            var officialRepo = Repos.Official;
-            var avatarsPackageUrl = officialRepo.GetPackage("com.vrchat.avatars").Url;
-
-            var tempFolderPath = Path.Combine(Path.GetTempPath(), "UED_Temp");
+            // Download and extract the VRChat Avatars SDK package
+            var avatarsPackageUrl = Repos.Official.GetPackage("com.vrchat.avatars").Url;
+            var tempFolderPath = Path.Combine(Path.GetTempPath(), "UED_Temp"); // Store in a system temp folder
             Directory.CreateDirectory(tempFolderPath);
 
-            // Download and extract avatars zip file
+            // Start downloading and extracting the avatars sdk zip file
             Debug.Log("[UdonExpressionDriver] Downloading VRC Avatars SDK package...");
             var success = await DownloadAndExtract(avatarsPackageUrl, tempFolderPath);
             if (!success)
             {
                 Debug.LogError("[UdonExpressionDriver] Failed to download or extract avatars package.");
-                return;
+                return false;
             }
 
-            // Find avatars DLL file
-            var avatarsDllPath = Path.Combine(tempFolderPath,
-                $"{Path.GetFileNameWithoutExtension(avatarsPackageUrl)}/Runtime/VRCSDK/Plugins/VRCSDK3A.dll");
+            // Find downloaded files
+            var downloadedPackageDirectory =
+                Path.Combine(tempFolderPath, Path.GetFileNameWithoutExtension(avatarsPackageUrl));
+            var avatarsDllPath =
+                Path.Combine(downloadedPackageDirectory, "Runtime/VRCSDK/Plugins/VRCSDK3A.dll");
 
             if (!File.Exists(avatarsDllPath))
             {
                 Debug.LogError($"[Udon Expression Driver] Could not find VRCSDK3A.dll at {avatarsDllPath}");
-                return;
+                return false;
             }
 
-            var whitelist = new List<string>
-            {
-                "VRCExpressionsMenu",
-                "VRCExpressionParameters"
-            };
-
+            // Strip downloaded assembly to only required types
             Debug.Log("[UdonExpressionDriver] Processing downloaded assembly...");
-            AssemblyStripper.StripExcept(avatarsDllPath, whitelist, assemblyPath);
+            var outputAssemblyPath =
+                Path.GetFullPath("Packages/rip.cuebitt.udonexpressiondriver/Editor/VRCSDK/Plugins/VRCSDK3A.dll");
+            StripAssembly(avatarsDllPath, outputAssemblyPath);
 
-            Debug.Log("[UdonExpressionDriver] Importing downloaded assembly...");
-            AssetDatabase.ImportAsset(assemblyPath, ImportAssetOptions.ForceSynchronousImport);
+            // Import the processed assembly into the project
+            Debug.Log("[UdonExpressionDriver] Importing downloaded assets...");
+            AssetDatabase.ImportAsset(outputAssemblyPath, ImportAssetOptions.ForceSynchronousImport);
             AssetDatabase.Refresh();
-            GuidChanger.ChangeGuid(assemblyPath, AssemblyGuid);
-
+            GuidChanger.ChangeGuid(outputAssemblyPath, AssemblyGuid);
 
             Debug.Log("[UdonExpressionDriver] Finished installing Udon Expression Driver!");
+            return true;
+        }
+
+        private static bool CheckForExisting()
+        {
+            // Check for existing DLL file
+            var possibleDllPaths = new[]
+            {
+                Path.GetFullPath("Packages/com.vrchat.avatars/Runtime/VRCSDK/Plugins/VRCSDK3A.dll"),
+                Path.GetFullPath("Packages/rip.cuebitt.udonexpressiondriver/Editor/VRCSDK/Plugins/VRCSDK3A.dll")
+            };
+
+            return File.Exists(possibleDllPaths[0]) || File.Exists(possibleDllPaths[1]);
         }
 
         private static async Task<bool> DownloadAndExtract(string url, string destination)
@@ -96,11 +103,7 @@ namespace UdonExpressionDriver.Editor.Util
                 var resp = req.SendWebRequest();
 
 
-                while (!resp.isDone)
-                {
-                    Debug.Log(resp.progress);
-                    await Task.Delay(100);
-                }
+                while (!resp.isDone) await Task.Delay(100);
 
                 if (req.result != UnityWebRequest.Result.Success)
                 {
@@ -149,6 +152,18 @@ namespace UdonExpressionDriver.Editor.Util
             }
 
             return true;
+        }
+
+        private static void StripAssembly(string inputPath, string outputPath)
+        {
+            var whitelist = new List<string>
+            {
+                "VRCExpressionsMenu",
+                "VRCExpressionParameters"
+            };
+
+            Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+            AssemblyStripper.StripExcept(inputPath, whitelist, outputPath);
         }
     }
 }
