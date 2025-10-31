@@ -12,7 +12,6 @@ namespace UdonExpressionDriver.Editor.Templates
     using System.Text;
     using System.Collections.Generic;
     using System.Linq;
-    using UdonExpressionDriver.Editor.Templates;
     using System;
     
     /// <summary>
