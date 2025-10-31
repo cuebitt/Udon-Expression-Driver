@@ -11,7 +11,8 @@
   "description": "Udon Expression Driver (UED) is a set of tools and runtime scripts used to port Avatars props to Worlds projects.",
   "vpmDependencies": {
     "com.vrchat.base": "3.x.x",
-    "com.vrchat.worlds": "3.x.x"
+    "com.vrchat.worlds": "3.x.x",
+    "com.vrchat.core.vpm-resolver": "0.1.x"
   },
   "legacyPackages": [
     "com.vrchat.clientsim",
