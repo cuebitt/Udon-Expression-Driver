@@ -18,37 +18,35 @@ namespace UdonExpressionDriver.Editor
 
     public class UdonExpressionDriverEditor : EditorWindow
     {
-        // Class generator
+        // Extractor
+        private string _parametersInputPath = "";
         private string _extractedJsonInputPath = "";
         private string _extractedJsonOutputPath = "";
-        private bool _forwarderForwardContacts = true;
-        private bool _forwarderForwardPhysbones = true;
-
-        // Forwarder
-        private GameObject _forwarderGameObject;
+        
+        // Class generator
+        private string _menuInputPath = "";
         private string _generatedClassName = "";
         private string _generatedClassOutputPath = "";
-
+        
         // Menu generator
         private string _menuGeneratorInputJsonPath = "";
         private string _menuGeneratorOutputPath = "";
 
-        // Extractor
-        private string _menuInputPath = "";
-        private string _packageAuthor = "";
-        private string _packageDisplayName = "";
-
+        // Forwarder
+        private GameObject _forwarderGameObject;
+        private bool _forwarderForwardContacts = true;
+        private bool _forwarderForwardPhysbones = true;
+        
         // Footer info
         private string _packageVersion = "";
-        private string _parametersInputPath = "";
-
-
+        private string _packageAuthor = "";
+        private string _packageDisplayName = "";
+        
         // Scroll view
         private Vector2 _scrollPosition = Vector2.zero;
 
         // Instructions foldout
         private bool _showInstructionsSection;
-
 
         private void OnGUI()
         {
@@ -390,6 +388,10 @@ namespace UdonExpressionDriver.Editor
             GUILayout.Space(10);
             if (GUILayout.Button("Add Forwarders"))
             {
+                // TODO remove
+                EditorUtility.DisplayDialog("[UED] Error", "This feature is unimplemented.", "OK");
+                return;
+                
                 if (_forwarderGameObject == null)
                     Debug.LogError("[Udon Expression Driver] Error: Specify a GameObject to add forwarders to.");
                 else if (PrefabUtility.IsPartOfPrefabAsset(_forwarderGameObject))
@@ -432,6 +434,9 @@ namespace UdonExpressionDriver.Editor
             GUILayout.Space(10);
             if (GUILayout.Button("Generate Menu"))
             {
+                // TODO remove
+                EditorUtility.DisplayDialog("[UED] Error", "This feature is unimplemented.", "OK");
+                return;
             }
         }
 
