@@ -12,6 +12,7 @@ namespace UdonExpressionDriver.Editor.Templates
     using System.Text;
     using System.Collections.Generic;
     using System.Linq;
+    using VRC.SDK3.Avatars.ScriptableObjects;
     using System;
     
     /// <summary>
@@ -58,24 +59,24 @@ namespace UdonExpressionDriver.Editor.Templates
    {
        var publicName = char.ToUpperInvariant(item.name[0]) + item.name[1..];
        var privateName = "_" + char.ToLowerInvariant(item.name[0]) + item.name[1..];
-       var typeName = item.type switch
+       var typeName = item.valueType switch
        {
-           UEDParameterType.Int => "int",
-           UEDParameterType.Float => "float",
-           UEDParameterType.Bool => "bool",
+           VRCExpressionParameters.ValueType.Int => "int",
+           VRCExpressionParameters.ValueType.Float => "float",
+           VRCExpressionParameters.ValueType.Bool => "bool",
            _ => "float" // this might break
        };
-       string defaultValueFormatted = item.type switch {
-           UEDParameterType.Int => item.defaultValue.ToString(),
-           UEDParameterType.Float => $"{item.defaultValue}f",
-           UEDParameterType.Bool =>
-               (char.ToLowerInvariant(item.defaultValue.ToString()[0]) + item.defaultValue.ToString()[1..]).ToString(),
+       string defaultValueFormatted = item.valueType switch {
+           VRCExpressionParameters.ValueType.Int => item.defaultValue.ToString(),
+           VRCExpressionParameters.ValueType.Float => $"{item.defaultValue}f",
+           VRCExpressionParameters.ValueType.Bool => 
+               Convert.ToBoolean((float)item.defaultValue).ToString().ToLower(),
            _ => "0f"
            };
-       var animatorMethodTypeFormatted = item.type switch {
-           UEDParameterType.Int => "Integer",
-           UEDParameterType.Float => "Float",
-           UEDParameterType.Bool => "Bool",
+       var animatorMethodTypeFormatted = item.valueType switch {
+           VRCExpressionParameters.ValueType.Int => "Integer",
+           VRCExpressionParameters.ValueType.Float => "Float",
+           VRCExpressionParameters.ValueType.Bool => "Bool",
            _ => "Float"
            };
 
@@ -172,24 +173,24 @@ namespace UdonExpressionDriver.Editor.Templates
    {
        var publicName = char.ToUpperInvariant(item.name[0]) + item.name[1..];
        var privateName = "_" + char.ToLowerInvariant(item.name[0]) + item.name[1..];
-       var typeName = item.type switch
+       var typeName = item.valueType switch
        {
-           UEDParameterType.Int => "int",
-           UEDParameterType.Float => "float",
-           UEDParameterType.Bool => "bool",
+           VRCExpressionParameters.ValueType.Int => "int",
+           VRCExpressionParameters.ValueType.Float => "float",
+           VRCExpressionParameters.ValueType.Bool => "bool",
            _ => "float" // this might break
        };
-       string defaultValueFormatted = item.type switch {
-           UEDParameterType.Int => item.defaultValue.ToString(),
-           UEDParameterType.Float => $"{item.defaultValue}f",
-           UEDParameterType.Bool =>
-               (char.ToLowerInvariant(item.defaultValue.ToString()[0]) + item.defaultValue.ToString()[1..]).ToString(),
+       string defaultValueFormatted = item.valueType switch {
+           VRCExpressionParameters.ValueType.Int => item.defaultValue.ToString(),
+           VRCExpressionParameters.ValueType.Float => $"{item.defaultValue}f",
+           VRCExpressionParameters.ValueType.Bool => 
+               Convert.ToBoolean((float)item.defaultValue).ToString().ToLower(),
            _ => "0f"
            };
-       var animatorMethodTypeFormatted = item.type switch {
-           UEDParameterType.Int => "Integer",
-           UEDParameterType.Float => "Float",
-           UEDParameterType.Bool => "Bool",
+       var animatorMethodTypeFormatted = item.valueType switch {
+           VRCExpressionParameters.ValueType.Int => "Integer",
+           VRCExpressionParameters.ValueType.Float => "Float",
+           VRCExpressionParameters.ValueType.Bool => "Bool",
            _ => "Float"
            };
 

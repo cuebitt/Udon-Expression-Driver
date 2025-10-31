@@ -2,6 +2,7 @@
 <#@ import namespace="System.Text" #>
 <#@ import namespace="System.Collections.Generic" #>
 <#@ import namespace="System.Linq" #>
+<#@ import namespace="VRC.SDK3.Avatars.ScriptableObjects" #>
 using UdonSharp;
 using UnityEngine;
 using VRC.SDK3.UdonNetworkCalling;
@@ -40,24 +41,24 @@ public class <#= ClassName #> : UEDBehaviour {
    {
        var publicName = char.ToUpperInvariant(item.name[0]) + item.name[1..];
        var privateName = "_" + char.ToLowerInvariant(item.name[0]) + item.name[1..];
-       var typeName = item.type switch
+       var typeName = item.valueType switch
        {
-           UEDParameterType.Int => "int",
-           UEDParameterType.Float => "float",
-           UEDParameterType.Bool => "bool",
+           VRCExpressionParameters.ValueType.Int => "int",
+           VRCExpressionParameters.ValueType.Float => "float",
+           VRCExpressionParameters.ValueType.Bool => "bool",
            _ => "float" // this might break
        };
-       string defaultValueFormatted = item.type switch {
-           UEDParameterType.Int => item.defaultValue.ToString(),
-           UEDParameterType.Float => $"{item.defaultValue}f",
-           UEDParameterType.Bool =>
-               (char.ToLowerInvariant(item.defaultValue.ToString()[0]) + item.defaultValue.ToString()[1..]).ToString(),
+       string defaultValueFormatted = item.valueType switch {
+           VRCExpressionParameters.ValueType.Int => item.defaultValue.ToString(),
+           VRCExpressionParameters.ValueType.Float => $"{item.defaultValue}f",
+           VRCExpressionParameters.ValueType.Bool => 
+               Convert.ToBoolean((float)item.defaultValue).ToString().ToLower(),
            _ => "0f"
            };
-       var animatorMethodTypeFormatted = item.type switch {
-           UEDParameterType.Int => "Integer",
-           UEDParameterType.Float => "Float",
-           UEDParameterType.Bool => "Bool",
+       var animatorMethodTypeFormatted = item.valueType switch {
+           VRCExpressionParameters.ValueType.Int => "Integer",
+           VRCExpressionParameters.ValueType.Float => "Float",
+           VRCExpressionParameters.ValueType.Bool => "Bool",
            _ => "Float"
            };
 #>
@@ -85,24 +86,24 @@ public class <#= ClassName #> : UEDBehaviour {
    {
        var publicName = char.ToUpperInvariant(item.name[0]) + item.name[1..];
        var privateName = "_" + char.ToLowerInvariant(item.name[0]) + item.name[1..];
-       var typeName = item.type switch
+       var typeName = item.valueType switch
        {
-           UEDParameterType.Int => "int",
-           UEDParameterType.Float => "float",
-           UEDParameterType.Bool => "bool",
+           VRCExpressionParameters.ValueType.Int => "int",
+           VRCExpressionParameters.ValueType.Float => "float",
+           VRCExpressionParameters.ValueType.Bool => "bool",
            _ => "float" // this might break
        };
-       string defaultValueFormatted = item.type switch {
-           UEDParameterType.Int => item.defaultValue.ToString(),
-           UEDParameterType.Float => $"{item.defaultValue}f",
-           UEDParameterType.Bool =>
-               (char.ToLowerInvariant(item.defaultValue.ToString()[0]) + item.defaultValue.ToString()[1..]).ToString(),
+       string defaultValueFormatted = item.valueType switch {
+           VRCExpressionParameters.ValueType.Int => item.defaultValue.ToString(),
+           VRCExpressionParameters.ValueType.Float => $"{item.defaultValue}f",
+           VRCExpressionParameters.ValueType.Bool => 
+               Convert.ToBoolean((float)item.defaultValue).ToString().ToLower(),
            _ => "0f"
            };
-       var animatorMethodTypeFormatted = item.type switch {
-           UEDParameterType.Int => "Integer",
-           UEDParameterType.Float => "Float",
-           UEDParameterType.Bool => "Bool",
+       var animatorMethodTypeFormatted = item.valueType switch {
+           VRCExpressionParameters.ValueType.Int => "Integer",
+           VRCExpressionParameters.ValueType.Float => "Float",
+           VRCExpressionParameters.ValueType.Bool => "Bool",
            _ => "Float"
            };
 #>

@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.IO;
-using Newtonsoft.Json;
 using UdonExpressionDriver.Editor.Templates;
 using UdonSharp;
 using UnityEditor;
@@ -13,8 +12,8 @@ namespace UdonExpressionDriver.Editor
 {
     public class UdonExpressionDriverJson
     {
-        public IList<UEDControl> controls = new List<UEDControl>();
-        public IList<UEDParameter> parameters = new List<UEDParameter>();
+        public IList<VRCExpressionsMenu.Control> Controls = new List<VRCExpressionsMenu.Control>();
+        public IList<VRCExpressionParameters.Parameter> Parameters = new List<VRCExpressionParameters.Parameter>();
     }
 
     public class UdonExpressionDriverEditor : EditorWindow
@@ -235,7 +234,7 @@ namespace UdonExpressionDriver.Editor
                 {
                     Debug.Log("[Udon Expression Driver] Generating UdonSharpBehaviour from template...");
 
-                    var json = JsonConvert.DeserializeObject<UdonExpressionDriverJson>(
+                    var json = UEDSerializer.Deserialize<UdonExpressionDriverJson>(
                         File.ReadAllText(_extractedJsonInputPath));
                     var className = UdonExpressionDriverUtils.ToValidClassName(_generatedClassName);
 
@@ -243,8 +242,8 @@ namespace UdonExpressionDriver.Editor
                     var template = new UEDDriverTemplate
                     {
                         ClassName = className,
-                        Parameters = json.parameters,
-                        Controls = json.controls
+                        Parameters = json.Parameters,
+                        Controls = json.Controls
                     };
 
                     var result = template.TransformText();
@@ -357,8 +356,8 @@ namespace UdonExpressionDriver.Editor
                     { "controls", controls }
                 };
                 var json = UEDSerializer.Serialize(export);
+                
                 Debug.Log("[Udon Expression Driver] Writing JSON...");
-                Debug.Log(json);
                 File.WriteAllText(_extractedJsonOutputPath, json);
 
                 _extractedJsonInputPath = _extractedJsonOutputPath;
