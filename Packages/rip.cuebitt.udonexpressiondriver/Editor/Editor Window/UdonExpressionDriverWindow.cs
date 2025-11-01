@@ -199,7 +199,7 @@ namespace UdonExpressionDriver.Editor
         public static void ShowWindow()
         {
             var wnd = GetWindow<UdonExpressionDriverWindow>();
-            wnd.titleContent = new GUIContent("UdonExpressionDriverWindow");
+            wnd.titleContent = new GUIContent("Udon Expression Driver");
         }
 
         private (string, string, string) GetPackageInfo()
