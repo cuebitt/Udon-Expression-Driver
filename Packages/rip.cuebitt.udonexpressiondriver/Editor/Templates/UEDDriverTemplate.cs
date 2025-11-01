@@ -9,10 +9,6 @@
 // ------------------------------------------------------------------------------
 namespace UdonExpressionDriver.Editor.Templates
 {
-    using System.Text;
-    using System.Collections.Generic;
-    using System.Linq;
-    using VRC.SDK3.Avatars.ScriptableObjects;
     using System;
     
     /// <summary>
@@ -26,17 +22,18 @@ namespace UdonExpressionDriver.Editor.Templates
         /// </summary>
         public virtual string TransformText()
         {
-            this.Write("using UdonSharp;\nusing UnityEngine;\nusing VRC.SDK3.UdonNetworkCalling;\nusing VRC.SDK3.Data;\nusing UdonExpressionDriver.Runtime;\n\n[UdonBehaviourSyncMode(BehaviourSyncMode.Continuous)]\npublic class ");
+            this.Write("using UdonSharp;\nusing UnityEngine;\nusing VRC.SDK3.UdonNetworkCalling;\nusing VRC.SDK3.Data;\nusing UdonExpressionDriver.Runtime;\n\npublic class ");
             
             this.Write(this.ToStringHelper.ToStringWithCulture(ClassName));
             
             #line default
             #line hidden
             this.Write(" : UEDBehaviour {\n    // Animator controller\n    private Animator _animator;\n\n    private void Start()\n    {\n        // Get animator component\n        _animator = GetComponent<Animator>();\n\n        // Reset animator values to default\n        ResetParameters();\n    }\n\n    [NetworkCallable]\n    public void ResetParameters()\n    {\n");
- foreach (var item in Parameters.ToList())
-   {
-       var publicName = char.ToUpperInvariant(item.name[0]) + item.name[1..];
-       var privateName = "_" + char.ToLowerInvariant(item.name[0]) + item.name[1..];
+
+    foreach (var item in Parameters.ToList())
+    {
+        var publicName = char.ToUpperInvariant(item.name[0]) + item.name[1..];
+        var privateName = "_" + char.ToLowerInvariant(item.name[0]) + item.name[1..];
 
             this.Write("        ");
             
@@ -52,33 +49,34 @@ namespace UdonExpressionDriver.Editor.Templates
             #line hidden
             this.Write(";\n");
 
-   }
+    }
 
             this.Write("    }\n#region Synced Variables\n");
- foreach (var item in Parameters.ToList().Where(p => p.networkSynced))
-   {
-       var publicName = char.ToUpperInvariant(item.name[0]) + item.name[1..];
-       var privateName = "_" + char.ToLowerInvariant(item.name[0]) + item.name[1..];
-       var typeName = item.valueType switch
-       {
-           VRCExpressionParameters.ValueType.Int => "int",
-           VRCExpressionParameters.ValueType.Float => "float",
-           VRCExpressionParameters.ValueType.Bool => "bool",
-           _ => "float" // this might break
-       };
-       string defaultValueFormatted = item.valueType switch {
-           VRCExpressionParameters.ValueType.Int => item.defaultValue.ToString(),
-           VRCExpressionParameters.ValueType.Float => $"{item.defaultValue}f",
-           VRCExpressionParameters.ValueType.Bool => 
-               Convert.ToBoolean((float)item.defaultValue).ToString().ToLower(),
-           _ => "0f"
-           };
-       var animatorMethodTypeFormatted = item.valueType switch {
-           VRCExpressionParameters.ValueType.Int => "Integer",
-           VRCExpressionParameters.ValueType.Float => "Float",
-           VRCExpressionParameters.ValueType.Bool => "Bool",
-           _ => "Float"
-           };
+
+    foreach (var item in Parameters.ToList().Where(p => p.networkSynced))
+    {
+        var publicName = char.ToUpperInvariant(item.name[0]) + item.name[1..];
+        var privateName = "_" + char.ToLowerInvariant(item.name[0]) + item.name[1..];
+        var typeName = item.valueType switch
+        {
+            VRCExpressionParameters.ValueType.Int => "int",
+            VRCExpressionParameters.ValueType.Float => "float",
+            VRCExpressionParameters.ValueType.Bool => "bool",
+            _ => "float" // this might break
+            };
+        string defaultValueFormatted = item.valueType switch {
+            VRCExpressionParameters.ValueType.Int => item.defaultValue.ToString(),
+            VRCExpressionParameters.ValueType.Float => $"{item.defaultValue}f",
+            VRCExpressionParameters.ValueType.Bool => 
+                Convert.ToBoolean((float)item.defaultValue).ToString().ToLower(),
+            _ => "0f"
+            };
+        var animatorMethodTypeFormatted = item.valueType switch {
+            VRCExpressionParameters.ValueType.Int => "Integer",
+            VRCExpressionParameters.ValueType.Float => "Float",
+            VRCExpressionParameters.ValueType.Bool => "Bool",
+            _ => "Float"
+            };
 
             this.Write("    private readonly int ");
             
@@ -166,33 +164,34 @@ namespace UdonExpressionDriver.Editor.Templates
             #line hidden
             this.Write(", value);\n        }\n    }\n");
 
-   }
+    }
 
             this.Write("#endregion\n\n#region Local Variables\n");
- foreach (var item in Parameters.ToList().Where(p => !p.networkSynced))
-   {
-       var publicName = char.ToUpperInvariant(item.name[0]) + item.name[1..];
-       var privateName = "_" + char.ToLowerInvariant(item.name[0]) + item.name[1..];
-       var typeName = item.valueType switch
-       {
-           VRCExpressionParameters.ValueType.Int => "int",
-           VRCExpressionParameters.ValueType.Float => "float",
-           VRCExpressionParameters.ValueType.Bool => "bool",
-           _ => "float" // this might break
-       };
-       string defaultValueFormatted = item.valueType switch {
-           VRCExpressionParameters.ValueType.Int => item.defaultValue.ToString(),
-           VRCExpressionParameters.ValueType.Float => $"{item.defaultValue}f",
-           VRCExpressionParameters.ValueType.Bool => 
-               Convert.ToBoolean((float)item.defaultValue).ToString().ToLower(),
-           _ => "0f"
-           };
-       var animatorMethodTypeFormatted = item.valueType switch {
-           VRCExpressionParameters.ValueType.Int => "Integer",
-           VRCExpressionParameters.ValueType.Float => "Float",
-           VRCExpressionParameters.ValueType.Bool => "Bool",
-           _ => "Float"
-           };
+
+    foreach (var item in Parameters.ToList().Where(p => !p.networkSynced))
+    {
+        var publicName = char.ToUpperInvariant(item.name[0]) + item.name[1..];
+        var privateName = "_" + char.ToLowerInvariant(item.name[0]) + item.name[1..];
+        var typeName = item.valueType switch
+        {
+            VRCExpressionParameters.ValueType.Int => "int",
+            VRCExpressionParameters.ValueType.Float => "float",
+            VRCExpressionParameters.ValueType.Bool => "bool",
+            _ => "float" // this might break
+            };
+        string defaultValueFormatted = item.valueType switch {
+            VRCExpressionParameters.ValueType.Int => item.defaultValue.ToString(),
+            VRCExpressionParameters.ValueType.Float => $"{item.defaultValue}f",
+            VRCExpressionParameters.ValueType.Bool => 
+                Convert.ToBoolean((float)item.defaultValue).ToString().ToLower(),
+            _ => "0f"
+            };
+        var animatorMethodTypeFormatted = item.valueType switch {
+            VRCExpressionParameters.ValueType.Int => "Integer",
+            VRCExpressionParameters.ValueType.Float => "Float",
+            VRCExpressionParameters.ValueType.Bool => "Bool",
+            _ => "Float"
+            };
 
             this.Write("    private readonly int ");
             
@@ -280,7 +279,7 @@ namespace UdonExpressionDriver.Editor.Templates
             #line hidden
             this.Write(", value);\n        }\n    }\n");
 
-   }
+    }
 
             this.Write("#endregion\n}");
             return this.GenerationEnvironment.ToString();
