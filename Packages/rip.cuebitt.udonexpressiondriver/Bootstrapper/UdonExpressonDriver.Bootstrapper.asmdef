@@ -1,16 +1,19 @@
 {
-  "name": "UdonExpressonDriver.Bootstrapper",
-  "rootNamespace": "",
-  "references": [],
-  "includePlatforms": [
-    "Editor"
-  ],
-  "excludePlatforms": [],
-  "allowUnsafeCode": false,
-  "overrideReferences": false,
-  "precompiledReferences": [],
-  "autoReferenced": true,
-  "defineConstraints": [],
-  "versionDefines": [],
-  "noEngineReferences": false
+    "name": "UdonExpressonDriver.Bootstrapper",
+    "rootNamespace": "",
+    "references": [],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "Mono.Cecil.dll",
+        "vpm-core-lib.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
 }

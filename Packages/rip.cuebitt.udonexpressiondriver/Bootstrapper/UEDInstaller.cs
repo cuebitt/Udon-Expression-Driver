@@ -4,14 +4,12 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Threading.Tasks;
-using UdonExpressionDriver.Bootstrapper;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Networking;
 using VRC.PackageManagement.Core;
-using PackageInfo = UnityEditor.PackageManager.PackageInfo;
 
-namespace UdonExpressionDriver.Editor.Util
+namespace UdonExpressionDriver.Bootstrapper
 {
     [InitializeOnLoad]
     public static class UEDInstaller

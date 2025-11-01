@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Mono.Cecil;
 
-namespace UdonExpressionDriver.Editor.Util
+namespace UdonExpressionDriver.Bootstrapper
 {
     public static class AssemblyStripper
     {
