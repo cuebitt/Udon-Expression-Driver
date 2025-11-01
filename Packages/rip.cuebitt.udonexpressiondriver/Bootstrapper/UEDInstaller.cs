@@ -2,12 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Threading.Tasks;
 using UdonExpressionDriver.Bootstrapper;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Networking;
 using VRC.PackageManagement.Core;
+using PackageInfo = UnityEditor.PackageManager.PackageInfo;
 
 namespace UdonExpressionDriver.Editor.Util
 {
@@ -25,10 +27,11 @@ namespace UdonExpressionDriver.Editor.Util
 
         private static async Task<bool> Install()
         {
+            var packageName = GetPackageNameForType(typeof(UEDInstaller));
             // Check for the UED-relevant files from the VRChat Avatars SDK
-            if (CheckForExisting())
+            if (CheckForExisting(packageName))
             {
-                Debug.Log("[UdonExpressionDriver] Udon Expression Driver is already installed.");
+                Debug.Log("[UdonExpressionDriver] Udon Expression Driver is installed.");
                 return true;
             }
 
@@ -63,7 +66,7 @@ namespace UdonExpressionDriver.Editor.Util
             // Strip downloaded assembly to only required types
             Debug.Log("[UdonExpressionDriver] Processing downloaded assembly...");
             var outputAssemblyPath =
-                Path.GetFullPath("Packages/rip.cuebitt.udonexpressiondriver/Editor/VRCSDK/Plugins/VRCSDK3A.dll");
+                Path.GetFullPath($"Packages/{packageName}/Editor/VRCSDK/Plugins/VRCSDK3A.dll");
             StripAssembly(avatarsDllPath, outputAssemblyPath);
 
             // Import the processed assembly into the project
@@ -76,13 +79,13 @@ namespace UdonExpressionDriver.Editor.Util
             return true;
         }
 
-        private static bool CheckForExisting()
+        private static bool CheckForExisting(string packageName)
         {
             // Check for existing DLL file
             var possibleDllPaths = new[]
             {
                 Path.GetFullPath("Packages/com.vrchat.avatars/Runtime/VRCSDK/Plugins/VRCSDK3A.dll"),
-                Path.GetFullPath("Packages/rip.cuebitt.udonexpressiondriver/Editor/VRCSDK/Plugins/VRCSDK3A.dll")
+                Path.GetFullPath($"Packages/{packageName}/Editor/VRCSDK/Plugins/VRCSDK3A.dll")
             };
 
             return File.Exists(possibleDllPaths[0]) || File.Exists(possibleDllPaths[1]);
@@ -165,5 +168,37 @@ namespace UdonExpressionDriver.Editor.Util
             Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
             AssemblyStripper.StripExcept(inputPath, whitelist, outputPath);
         }
+
+        private static string GetPackageNameForType(Type type)
+        {
+            var script = AssetDatabase.FindAssets("t:MonoScript")
+                .Select(AssetDatabase.GUIDToAssetPath)
+                .Select(AssetDatabase.LoadAssetAtPath<MonoScript>)
+                .FirstOrDefault(s => s != null && s.GetClass() == type);
+
+            if (script == null)
+            {
+                return null;
+            }
+
+            var assetPath = AssetDatabase.GetAssetPath(script);
+
+            // If it’s under Packages/, extract package name
+            if (assetPath.StartsWith("Packages/"))
+            {
+                // e.g. "Packages/com.unity.textmeshpro/Scripts/TextMeshPro.cs"
+                var parts = assetPath.Split('/');
+                if (parts.Length > 1)
+                {
+                    var packageName = parts[1];
+                    return packageName;
+                }
+            }
+
+            // Otherwise, it's part of your project (Assets/)
+            return "Assets";
+        }
+
+        
     }
 }

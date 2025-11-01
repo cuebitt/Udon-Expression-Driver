@@ -1,0 +1,100 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
+    <ui:ScrollView>
+        <ui:VisualElement name="container" style="flex-grow: 1;">
+            <ui:VisualElement name="header" class="box">
+                <ui:Label tabindex="-1" text="Udon Expression Driver" parse-escape-sequences="true" display-tooltip-when-elided="true" style="-unity-text-align: upper-center; font-size: 24px; -unity-font-style: normal; margin-bottom: 5px;" />
+                <ui:Label tabindex="-1" text="...an Avatars-to-Worlds porting tool for VRChat!" parse-escape-sequences="true" display-tooltip-when-elided="true" style="-unity-text-align: upper-center; font-size: 12px; color: rgb(130, 130, 130);" />
+            </ui:VisualElement>
+            <ui:Foldout text="Instructions" name="instructions" value="false" style="font-size: 14px; -unity-font-style: bold;">
+                <ui:VisualElement class="instruction-item" style="flex-grow: 1; flex-direction: row;">
+                    <ui:Label tabindex="-1" text="1." parse-escape-sequences="true" display-tooltip-when-elided="true" style="flex-shrink: 0; flex-grow: 0; width: 20px; -unity-font-style: bold;" />
+                    <ui:Label tabindex="-1" text="Use the &lt;b&gt;&quot;Extract Menu + Parameters&quot;&lt;/b&gt; section to convert VRCExpressionsMenu and VRCExpressionParameters assets to JSON." parse-escape-sequences="true" display-tooltip-when-elided="true" />
+                </ui:VisualElement>
+                <ui:VisualElement class="instruction-item" style="flex-grow: 1; flex-direction: row;">
+                    <ui:Label tabindex="-1" text="2." parse-escape-sequences="true" display-tooltip-when-elided="true" style="flex-shrink: 0; flex-grow: 0; width: 20px; -unity-font-style: bold;" />
+                    <ui:Label tabindex="-1" text="Use the &lt;b&gt;&quot;Generate Animator Driver Behaviour&quot;&lt;/b&gt; section to generate a driver script for your prop from the JSON file created in &lt;i&gt;step 1.&lt;/i&gt;" parse-escape-sequences="true" display-tooltip-when-elided="true" />
+                </ui:VisualElement>
+                <ui:VisualElement class="instruction-item" style="flex-grow: 1; flex-direction: row;">
+                    <ui:Label tabindex="-1" text="3." parse-escape-sequences="true" display-tooltip-when-elided="true" style="flex-shrink: 0; flex-grow: 0; width: 20px; -unity-font-style: bold;" />
+                    <ui:Label tabindex="-1" text="Use the &lt;b&gt;&quot;Generate Menu Prefab&quot;&lt;/b&gt; to section to generate a menu UI prefab that controls the driver behaviour from &lt;i&gt;step 2.&lt;/i&gt;" parse-escape-sequences="true" display-tooltip-when-elided="true" />
+                </ui:VisualElement>
+                <ui:VisualElement class="instruction-item" style="flex-grow: 1; flex-direction: row;">
+                    <ui:Label tabindex="-1" text="4." parse-escape-sequences="true" display-tooltip-when-elided="true" enable-rich-text="true" style="flex-shrink: 0; flex-grow: 0; width: 20px; -unity-font-style: bold;" />
+                    <ui:Label tabindex="-1" text="Use the &lt;b&gt;&quot;Forward Physbone + Contact Events&quot;&lt;/b&gt; section to add event forwarders to every child GameObject that has a Physbone or Contact component." parse-escape-sequences="true" display-tooltip-when-elided="true" />
+                </ui:VisualElement>
+                <ui:VisualElement class="instruction-item" style="flex-grow: 1; flex-direction: row;">
+                    <ui:Label tabindex="-1" text="5." parse-escape-sequences="true" display-tooltip-when-elided="true" style="flex-shrink: 0; flex-grow: 0; width: 20px; -unity-font-style: bold;" />
+                    <ui:Label tabindex="-1" text="Add the behaviour script from &lt;i&gt;step 2&lt;/i&gt; to the &lt;b&gt;prop&apos;s root&lt;/b&gt; GameObject" parse-escape-sequences="true" display-tooltip-when-elided="true" />
+                </ui:VisualElement>
+                <ui:VisualElement class="instruction-item" style="flex-grow: 1; flex-direction: row;">
+                    <ui:Label tabindex="-1" text="6." parse-escape-sequences="true" display-tooltip-when-elided="true" style="flex-shrink: 0; flex-grow: 0; width: 20px; -unity-font-style: bold;" />
+                    <ui:Label tabindex="-1" text="Add the menu prefab from &lt;i&gt;step 3&lt;/i&gt; to your scene, then drag the &lt;b&gt;prop&apos;s root&lt;/b&gt; GameObject to the &lt;i&gt;{placeholder}&lt;/i&gt; field of the &lt;b&gt;menu prefab root&apos;s&lt;/b&gt; behaviour." parse-escape-sequences="true" display-tooltip-when-elided="true" />
+                </ui:VisualElement>
+            </ui:Foldout>
+            <ui:VisualElement name="extractor-section" class="box main-section" style="flex-grow: 1;">
+                <ui:GroupBox text="Extract Menu + Parameters" style="-unity-font-style: bold; font-size: 14px;">
+                    <ui:HelpBox text="Converts an Expressions Menu + Expression Parameter asset into a JSON file." message-type="Info" />
+                    <ui:VisualElement style="flex-grow: 1; margin-top: 10px; margin-bottom: 10px;">
+                        <uie:ObjectField label="Menu" type="VRC.SDK3.Avatars.ScriptableObjects.VRCExpressionsMenu, VRCSDK3A" name="extractor-menu-asset-field" binding-path="extractorMenu" style="-unity-font-style: normal;" />
+                        <uie:ObjectField label="Parameters" type="VRC.SDK3.Avatars.ScriptableObjects.VRCExpressionParameters, VRCSDK3A" name="extractor-parameters-asset-field" binding-path="extractorParameters" style="-unity-font-style: normal;" />
+                        <ui:TextField picking-mode="Ignore" label="Output Path" name="extractor-output-path" binding-path="extractorOutputPath" style="-unity-font-style: normal;">
+                            <ui:Button text="Browse" parse-escape-sequences="true" display-tooltip-when-elided="true" name="extractor-output-browse-btn" />
+                        </ui:TextField>
+                    </ui:VisualElement>
+                    <ui:Button text="Extract" parse-escape-sequences="true" display-tooltip-when-elided="true" name="extract-section-btn" />
+                </ui:GroupBox>
+            </ui:VisualElement>
+            <ui:VisualElement name="driver-generator-section" class="box main-section" style="flex-grow: 1;">
+                <ui:GroupBox text="Generate Animator Driver Behaviour" style="-unity-font-style: bold; font-size: 14px;">
+                    <ui:HelpBox text="Generates an UdonSharpBehaviour that manages an expressions menu." message-type="Info" />
+                    <ui:VisualElement style="flex-grow: 1; margin-top: 10px; margin-bottom: 10px;">
+                        <ui:TextField picking-mode="Ignore" label="JSON Path" name="driver-generator-input-path" binding-path="driverGeneratorInputPath" style="-unity-font-style: normal;">
+                            <ui:Button text="Browse" parse-escape-sequences="true" display-tooltip-when-elided="true" name="driver-generator-input-browse-btn" />
+                        </ui:TextField>
+                        <ui:TextField picking-mode="Ignore" label="Output Path" name="driver-generator-output-path" binding-path="driverGeneratorOutputPath" style="-unity-font-style: normal;">
+                            <ui:Button text="Browse" parse-escape-sequences="true" display-tooltip-when-elided="true" name="driver-generator-output-browse-btn" />
+                        </ui:TextField>
+                        <ui:TextField picking-mode="Ignore" label="Class Name" name="driver-generator-class-name" binding-path="driverGeneratorClassName" style="-unity-font-style: normal;" />
+                    </ui:VisualElement>
+                    <ui:Button text="Generate Driver Behaviour" parse-escape-sequences="true" display-tooltip-when-elided="true" name="generate-driver-section-btn" />
+                </ui:GroupBox>
+            </ui:VisualElement>
+            <ui:VisualElement name="menu-generator-section" class="box main-section" style="flex-grow: 1;">
+                <ui:GroupBox text="Generate Menu Prefab" style="-unity-font-style: bold; font-size: 14px;">
+                    <ui:HelpBox text="Generates an Udon-powered Expressions Menu." message-type="Info" />
+                    <ui:VisualElement style="flex-grow: 1; margin-top: 10px; margin-bottom: 10px;">
+                        <ui:TextField picking-mode="Ignore" label="JSON Path" name="menu-generator-input-path" binding-path="menuGeneratorInputPath" style="-unity-font-style: normal;">
+                            <ui:Button text="Browse" parse-escape-sequences="true" display-tooltip-when-elided="true" name="menu-generator-input-browse-btn" style="height: 19px;" />
+                        </ui:TextField>
+                        <ui:TextField picking-mode="Ignore" label="Output Path" name="menu-generator-output-path" binding-path="menuGeneratorOutputPath" style="-unity-font-style: normal;">
+                            <ui:Button text="Browse" parse-escape-sequences="true" display-tooltip-when-elided="true" name="menu-generator-out-browse-btn" />
+                        </ui:TextField>
+                    </ui:VisualElement>
+                    <ui:Button text="Generate Menu" parse-escape-sequences="true" display-tooltip-when-elided="true" name="generate-menu-section-btn" />
+                </ui:GroupBox>
+            </ui:VisualElement>
+            <ui:VisualElement name="forwarder-section" class="box main-section" style="flex-grow: 1;">
+                <ui:GroupBox text="Forward Physbone + Contact Events" style="-unity-font-style: bold; font-size: 14px;">
+                    <ui:HelpBox text="Adds scripts that forward all Physbone and Contact events to the root behaviour." message-type="Info" />
+                    <ui:VisualElement name="forwarder-fields" style="flex-grow: 1; margin-top: 10px; margin-bottom: 10px;">
+                        <uie:ObjectField label="Root GameObject" type="UnityEngine.GameObject, UnityEngine.CoreModule" name="forwarder-root-gameobject" binding-path="forwarderRootGameObject" style="-unity-font-style: normal;" />
+                        <ui:Toggle label="Physbone Events" name="forwarder-forward-physbone" binding-path="forwarderForwardPhysbone" style="-unity-font-style: normal;" />
+                        <ui:Toggle label="Contact Events" name="forwarder-forward-contact" binding-path="forwarderForwardContact" style="-unity-font-style: normal;" />
+                    </ui:VisualElement>
+                    <ui:Button text="Add Event Forwarders" parse-escape-sequences="true" display-tooltip-when-elided="true" name="forwarders-section-btn" />
+                </ui:GroupBox>
+            </ui:VisualElement>
+            <ui:VisualElement name="footer" class="box">
+                <ui:VisualElement style="flex-grow: 1; flex-direction: row; justify-content: center; margin-bottom: 10px;">
+                    <ui:Label tabindex="-1" text="Package Name" parse-escape-sequences="true" display-tooltip-when-elided="true" name="package-name" binding-path="packageName" style="-unity-text-align: upper-center; font-size: 20px; -unity-font-style: bold; flex-shrink: 1;" />
+                    <ui:Label tabindex="-1" text="vX.Y.Z" parse-escape-sequences="true" display-tooltip-when-elided="true" name="package-version" binding-path="packageVersion" style="-unity-text-align: upper-center; font-size: 20px; -unity-font-style: italic; flex-shrink: 1; margin-left: 5px;" />
+                </ui:VisualElement>
+                <ui:VisualElement style="flex-grow: 1; flex-direction: row; justify-content: center; margin-bottom: 10px;">
+                    <ui:Label tabindex="-1" text="by " parse-escape-sequences="true" display-tooltip-when-elided="true" style="-unity-text-align: upper-center; font-size: 16px; color: rgb(130, 130, 130);" />
+                    <ui:Label tabindex="-1" text="Author" parse-escape-sequences="true" display-tooltip-when-elided="true" name="package-author" binding-path="packageAuthor" style="-unity-text-align: upper-center; font-size: 16px; color: rgb(130, 130, 130);" />
+                    <ui:Label tabindex="-1" text=" ❤" parse-escape-sequences="true" display-tooltip-when-elided="true" style="-unity-text-align: upper-center; font-size: 16px; color: rgb(130, 130, 130);" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:ScrollView>
+</ui:UXML>
