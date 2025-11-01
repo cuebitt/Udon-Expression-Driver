@@ -1,6 +1,6 @@
 ﻿using UdonSharp;
 
-namespace UdonExpressionDriver.Runtime
+namespace UdonExpressionDriver
 {
     public class UEDBehaviour : UdonSharpBehaviour
     {
