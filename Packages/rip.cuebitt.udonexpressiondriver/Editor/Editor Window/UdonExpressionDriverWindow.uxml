@@ -42,7 +42,7 @@
                             <ui:Button text="Browse" parse-escape-sequences="true" display-tooltip-when-elided="true" name="extractor-output-browse-btn" />
                         </ui:TextField>
                     </ui:VisualElement>
-                    <ui:Button text="Extract" parse-escape-sequences="true" display-tooltip-when-elided="true" name="extract-section-btn" />
+                    <ui:Button text="Extract" parse-escape-sequences="true" display-tooltip-when-elided="true" name="extract-section-btn" class="section-btn" />
                 </ui:GroupBox>
             </ui:VisualElement>
             <ui:VisualElement name="driver-generator-section" class="box main-section" style="flex-grow: 1;">
@@ -57,7 +57,7 @@
                         </ui:TextField>
                         <ui:TextField picking-mode="Ignore" label="Class Name" name="driver-generator-class-name" binding-path="driverGeneratorClassName" style="-unity-font-style: normal;" />
                     </ui:VisualElement>
-                    <ui:Button text="Generate Driver Behaviour" parse-escape-sequences="true" display-tooltip-when-elided="true" name="generate-driver-section-btn" />
+                    <ui:Button text="Generate Driver Behaviour" parse-escape-sequences="true" display-tooltip-when-elided="true" name="generate-driver-section-btn" class="section-btn" />
                 </ui:GroupBox>
             </ui:VisualElement>
             <ui:VisualElement name="menu-generator-section" class="box main-section" style="flex-grow: 1;">
@@ -71,7 +71,7 @@
                             <ui:Button text="Browse" parse-escape-sequences="true" display-tooltip-when-elided="true" name="menu-generator-out-browse-btn" />
                         </ui:TextField>
                     </ui:VisualElement>
-                    <ui:Button text="Generate Menu" parse-escape-sequences="true" display-tooltip-when-elided="true" name="generate-menu-section-btn" />
+                    <ui:Button text="Generate Menu" parse-escape-sequences="true" display-tooltip-when-elided="true" name="generate-menu-section-btn" class="section-btn" />
                 </ui:GroupBox>
             </ui:VisualElement>
             <ui:VisualElement name="forwarder-section" class="box main-section" style="flex-grow: 1;">
@@ -82,7 +82,7 @@
                         <ui:Toggle label="Physbone Events" name="forwarder-forward-physbone" binding-path="forwarderForwardPhysbone" style="-unity-font-style: normal;" />
                         <ui:Toggle label="Contact Events" name="forwarder-forward-contact" binding-path="forwarderForwardContact" style="-unity-font-style: normal;" />
                     </ui:VisualElement>
-                    <ui:Button text="Add Event Forwarders" parse-escape-sequences="true" display-tooltip-when-elided="true" name="forwarders-section-btn" />
+                    <ui:Button text="Add Event Forwarders" parse-escape-sequences="true" display-tooltip-when-elided="true" name="forwarders-section-btn" class="section-btn" />
                 </ui:GroupBox>
             </ui:VisualElement>
             <ui:VisualElement name="footer" class="box">

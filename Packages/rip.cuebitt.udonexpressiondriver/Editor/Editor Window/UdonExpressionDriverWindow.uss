@@ -56,3 +56,26 @@
 #unity-text-input > TextElement {
     font-size: 10px;
 }
+
+.unity-help-box__label {
+    font-size: 12px;
+    -unity-font-style: normal;
+}
+
+.unity-help-box {
+    margin-top: 5px;
+    margin-bottom: 5px;
+    padding-top: 5px;
+    padding-right: 5px;
+    padding-bottom: 5px;
+    padding-left: 5px;
+}
+
+.section-btn {
+    -unity-font-style: normal;
+    font-size: 14px;
+    margin-top: 0;
+    margin-right: 10px;
+    margin-bottom: 0;
+    margin-left: 10px;
+}
