@@ -1,4 +1,8 @@
 <#@ template language="C#" hostspecific="false" linePragmas="false" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="VRC.SDK3.Avatars.ScriptableObjects" #>
 using UdonSharp;
 using UnityEngine;
 using VRC.SDK3.UdonNetworkCalling;

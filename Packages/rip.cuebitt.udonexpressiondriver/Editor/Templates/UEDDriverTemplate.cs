@@ -9,6 +9,10 @@
 // ------------------------------------------------------------------------------
 namespace UdonExpressionDriver.Editor.Templates
 {
+    using System.Text;
+    using System.Collections.Generic;
+    using System.Linq;
+    using VRC.SDK3.Avatars.ScriptableObjects;
     using System;
     
     /// <summary>
@@ -22,13 +26,13 @@ namespace UdonExpressionDriver.Editor.Templates
         /// </summary>
         public virtual string TransformText()
         {
-            this.Write("using UdonSharp;\nusing UnityEngine;\nusing VRC.SDK3.UdonNetworkCalling;\nusing VRC.SDK3.Data;\nusing UdonExpressionDriver.Runtime;\n\npublic class ");
+            this.Write("using UdonSharp;\r\nusing UnityEngine;\r\nusing VRC.SDK3.UdonNetworkCalling;\r\nusing VRC.SDK3.Data;\r\nusing UdonExpressionDriver.Runtime;\r\n\r\npublic class ");
             
             this.Write(this.ToStringHelper.ToStringWithCulture(ClassName));
             
             #line default
             #line hidden
-            this.Write(" : UEDBehaviour {\n    // Animator controller\n    private Animator _animator;\n\n    private void Start()\n    {\n        // Get animator component\n        _animator = GetComponent<Animator>();\n\n        // Reset animator values to default\n        ResetParameters();\n    }\n\n    [NetworkCallable]\n    public void ResetParameters()\n    {\n");
+            this.Write(" : UEDBehaviour {\r\n    // Animator controller\r\n    private Animator _animator;\r\n\r\n    private void Start()\r\n    {\r\n        // Get animator component\r\n        _animator = GetComponent<Animator>();\r\n\r\n        // Reset animator values to default\r\n        ResetParameters();\r\n    }\r\n\r\n    [NetworkCallable]\r\n    public void ResetParameters()\r\n    {\r\n");
 
     foreach (var item in Parameters.ToList())
     {
@@ -47,11 +51,11 @@ namespace UdonExpressionDriver.Editor.Templates
             
             #line default
             #line hidden
-            this.Write(";\n");
+            this.Write(";\r\n");
 
     }
 
-            this.Write("    }\n#region Synced Variables\n");
+            this.Write("    }\r\n#region Synced Variables\r\n");
 
     foreach (var item in Parameters.ToList().Where(p => p.networkSynced))
     {
@@ -90,7 +94,7 @@ namespace UdonExpressionDriver.Editor.Templates
             
             #line default
             #line hidden
-            this.Write("\");\n    private readonly ");
+            this.Write("\");\r\n    private readonly ");
             
             this.Write(this.ToStringHelper.ToStringWithCulture(typeName));
             
@@ -108,13 +112,13 @@ namespace UdonExpressionDriver.Editor.Templates
             
             #line default
             #line hidden
-            this.Write(";\n\n    [UdonSynced][FieldChangeCallback(nameof(");
+            this.Write(";\r\n\r\n    [UdonSynced][FieldChangeCallback(nameof(");
             
             this.Write(this.ToStringHelper.ToStringWithCulture(publicName));
             
             #line default
             #line hidden
-            this.Write("))]\n    private ");
+            this.Write("))]\r\n    private ");
             
             this.Write(this.ToStringHelper.ToStringWithCulture(typeName));
             
@@ -126,7 +130,7 @@ namespace UdonExpressionDriver.Editor.Templates
             
             #line default
             #line hidden
-            this.Write(";\n    public ");
+            this.Write(";\r\n    public ");
             
             this.Write(this.ToStringHelper.ToStringWithCulture(typeName));
             
@@ -138,19 +142,19 @@ namespace UdonExpressionDriver.Editor.Templates
             
             #line default
             #line hidden
-            this.Write("\n    {\n        get => ");
+            this.Write("\r\n    {\r\n        get => ");
             
             this.Write(this.ToStringHelper.ToStringWithCulture(privateName));
             
             #line default
             #line hidden
-            this.Write(";\n        set\n        {\n            ");
+            this.Write(";\r\n        set\r\n        {\r\n            ");
             
             this.Write(this.ToStringHelper.ToStringWithCulture(privateName));
             
             #line default
             #line hidden
-            this.Write(" = value;\n            _animator.Set");
+            this.Write(" = value;\r\n            _animator.Set");
             
             this.Write(this.ToStringHelper.ToStringWithCulture(animatorMethodTypeFormatted));
             
@@ -162,11 +166,11 @@ namespace UdonExpressionDriver.Editor.Templates
             
             #line default
             #line hidden
-            this.Write(", value);\n        }\n    }\n");
+            this.Write(", value);\r\n        }\r\n    }\r\n");
 
     }
 
-            this.Write("#endregion\n\n#region Local Variables\n");
+            this.Write("#endregion\r\n\r\n#region Local Variables\r\n");
 
     foreach (var item in Parameters.ToList().Where(p => !p.networkSynced))
     {
@@ -205,7 +209,7 @@ namespace UdonExpressionDriver.Editor.Templates
             
             #line default
             #line hidden
-            this.Write("\");\n    private readonly ");
+            this.Write("\");\r\n    private readonly ");
             
             this.Write(this.ToStringHelper.ToStringWithCulture(typeName));
             
@@ -223,13 +227,13 @@ namespace UdonExpressionDriver.Editor.Templates
             
             #line default
             #line hidden
-            this.Write(";\n\n    [FieldChangeCallback(nameof(");
+            this.Write(";\r\n\r\n    [FieldChangeCallback(nameof(");
             
             this.Write(this.ToStringHelper.ToStringWithCulture(publicName));
             
             #line default
             #line hidden
-            this.Write("))]\n    private ");
+            this.Write("))]\r\n    private ");
             
             this.Write(this.ToStringHelper.ToStringWithCulture(typeName));
             
@@ -241,7 +245,7 @@ namespace UdonExpressionDriver.Editor.Templates
             
             #line default
             #line hidden
-            this.Write(";\n    public ");
+            this.Write(";\r\n    public ");
             
             this.Write(this.ToStringHelper.ToStringWithCulture(typeName));
             
@@ -253,19 +257,19 @@ namespace UdonExpressionDriver.Editor.Templates
             
             #line default
             #line hidden
-            this.Write("\n    {\n        get => ");
+            this.Write("\r\n    {\r\n        get => ");
             
             this.Write(this.ToStringHelper.ToStringWithCulture(privateName));
             
             #line default
             #line hidden
-            this.Write(";\n        set\n        {\n            ");
+            this.Write(";\r\n        set\r\n        {\r\n            ");
             
             this.Write(this.ToStringHelper.ToStringWithCulture(privateName));
             
             #line default
             #line hidden
-            this.Write(" = value;\n            _animator.Set");
+            this.Write(" = value;\r\n            _animator.Set");
             
             this.Write(this.ToStringHelper.ToStringWithCulture(animatorMethodTypeFormatted));
             
@@ -277,11 +281,11 @@ namespace UdonExpressionDriver.Editor.Templates
             
             #line default
             #line hidden
-            this.Write(", value);\n        }\n    }\n");
+            this.Write(", value);\r\n        }\r\n    }\r\n");
 
     }
 
-            this.Write("#endregion\n}");
+            this.Write("#endregion\r\n}");
             return this.GenerationEnvironment.ToString();
         }
     }

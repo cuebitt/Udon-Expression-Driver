@@ -237,7 +237,6 @@ namespace UdonExpressionDriver.Editor
             {
                 ClassName = className,
                 Parameters = json.Parameters,
-                Controls = json.Controls
             };
 
             var result = template.TransformText();
