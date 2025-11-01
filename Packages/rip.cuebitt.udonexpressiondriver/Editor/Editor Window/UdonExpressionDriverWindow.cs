@@ -122,7 +122,7 @@ namespace UdonExpressionDriver.Editor
                     _serializedObject.Update();
                 }
             };
-            root.Q<Button>("driver-generator-output-path").clicked += () =>
+            root.Q<Button>("driver-generator-output-browse-btn").clicked += () =>
             {
                 var path = EditorUtility.SaveFolderPanel("Select output directory", "Assets", "output");
                 if (!string.IsNullOrEmpty(path))
