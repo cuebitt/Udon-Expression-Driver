@@ -1,4 +1,5 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
+    <Style src="project://database/Packages/rip.cuebitt.udonexpressiondriver/Editor/Editor%20Window/UdonExpressionDriverWindow.uss?fileID=7433441132597879392&amp;guid=f6e257eaf3bab47ffbd5cc2f533718b0&amp;type=3#UdonExpressionDriverWindow" />
     <ui:ScrollView>
         <ui:VisualElement name="container" style="flex-grow: 1;">
             <ui:VisualElement name="header" class="box">
