@@ -31,7 +31,7 @@ namespace UdonExpressionDriver.Editor.Util
             // Check for the UED-relevant files from the VRChat Avatars SDK
             if (CheckForExisting(packageName))
             {
-                Debug.Log("[UdonExpressionDriver] Udon Expression Driver is already installed.");
+                Debug.Log("[UdonExpressionDriver] Udon Expression Driver is installed.");
                 return true;
             }
 
