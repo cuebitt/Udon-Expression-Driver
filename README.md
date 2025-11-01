@@ -1,4 +1,18 @@
-# Udon Expression Driver
+![Udon Expression Driver](/.github/media/Udon%20Expression%20Driver.png)
+
+<br>
+<div align="center" class="flex">
+
+<img alt="GitHub License" src="https://img.shields.io/github/license/cuebitt/UdonExpressionDriver">
+
+<img alt="GitHub Tag" src="https://img.shields.io/github/v/tag/cuebitt/UdonExpressionDriver?label=latest%20release">
+
+<img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/cuebitt/UdonExpressionDriver">
+
+<img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/cuebitt/UdonExpressionDriver/release.yml">
+
+</div>
+<br>
 
 Udon Expression Driver is a set of tools and runtime scripts used to non-destructively port VRChat avatar props with Dynamics (Physbones and Contacts[^1]) to Worlds.
 
@@ -7,13 +21,19 @@ Udon Expression Driver is a set of tools and runtime scripts used to non-destruc
 - [x] Automatic installer
 - [x] `VRCExpressionsMenu` + `VRCExpressionParameter` -> JSON extractor
 - [x] JSON -> Driver UdonSharpBehaviour
-	- [ ] Custom inspector for behaviour class
+  - [ ] Custom inspector for behaviour class
 - [ ] Avatars-like menu prefab generator
 - [ ] Physbone/Contact event forwarder tool
-	- [ ] Runtime Physbone event forwarder script
-	- [ ] Runtime Contact event forwarder script
+  - [ ] Runtime Physbone event forwarder script
+  - [ ] Runtime Contact event forwarder script
 
 ## Usage
+
+<div align="center">
+  
+# ➡️ [Click here to add to VCC](https://cuebitt.github.io/vpm/) ⬅️
+
+</div>
 
 Add [my VPM repository](https://cuebitt.github.io/vpm/) to VCC/ALCOM and install the `UdonExpressionDriver` package to your World project.
 
