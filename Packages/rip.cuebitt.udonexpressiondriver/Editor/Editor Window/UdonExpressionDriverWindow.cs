@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Newtonsoft.Json;
 using UdonExpressionDriver.Editor.Templates;
 using UdonSharp;
 using UnityEditor;
@@ -194,7 +195,7 @@ namespace UdonExpressionDriver.Editor
         }
 
 
-        [MenuItem("Window/UI Toolkit/UdonExpressionDriverWindow")]
+        [MenuItem("Tools/Udon Expression Driver")]
         public static void ShowWindow()
         {
             var wnd = GetWindow<UdonExpressionDriverWindow>();
@@ -268,7 +269,10 @@ namespace UdonExpressionDriver.Editor
 
         public class UdonExpressionDriverJson
         {
+            [JsonProperty("controls")]
             public IList<VRCExpressionsMenu.Control> Controls = new List<VRCExpressionsMenu.Control>();
+            
+            [JsonProperty("parameters")]
             public IList<VRCExpressionParameters.Parameter> Parameters = new List<VRCExpressionParameters.Parameter>();
         }
     }
