@@ -8,6 +8,7 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using VRC.SDK3.Avatars.ScriptableObjects;
+using Object = UnityEngine.Object;
 using PackageInfo = UnityEditor.PackageManager.PackageInfo;
 
 namespace UdonExpressionDriver.Editor
@@ -45,17 +46,9 @@ namespace UdonExpressionDriver.Editor
         [SerializeField] private VisualTreeAsset visualTree;
 
         [SerializeField] private StyleSheet styleSheet;
-
-        private SerializedObject _serializedObject;
         private UEDWindowData _data;
 
-
-        [MenuItem("Window/UI Toolkit/UdonExpressionDriverWindow")]
-        public static void ShowWindow()
-        {
-            var wnd = GetWindow<UdonExpressionDriverWindow>();
-            wnd.titleContent = new GUIContent("UdonExpressionDriverWindow");
-        }
+        private SerializedObject _serializedObject;
 
         public void CreateGUI()
         {
@@ -103,12 +96,14 @@ namespace UdonExpressionDriver.Editor
                     Debug.LogError("[Udon Expression Driver] Specify a VRCExpressionsMenu asset.");
                     return;
                 }
-                else if (_data.extractorParameters == null)
+
+                if (_data.extractorParameters == null)
                 {
                     Debug.LogError("[Udon Expression Driver] Specify a VRCExpressionParameters asset.");
                     return;
                 }
-                else if (string.IsNullOrEmpty(_data.extractorOutputPath))
+
+                if (string.IsNullOrEmpty(_data.extractorOutputPath))
                 {
                     Debug.LogError("[Udon Expression Driver] Specify an output path.");
                     return;
@@ -137,18 +132,13 @@ namespace UdonExpressionDriver.Editor
             };
             root.Q<Button>("generate-driver-section-btn").clicked += () =>
             {
-                if (string.IsNullOrEmpty(_data.driverGeneratorInputPath) || !File.Exists(_data.driverGeneratorInputPath))
-                {
+                if (string.IsNullOrEmpty(_data.driverGeneratorInputPath) ||
+                    !File.Exists(_data.driverGeneratorInputPath))
                     Debug.LogError("[Udon Expression Driver] Could not locate JSON input file.");
-                }
                 else if (string.IsNullOrEmpty(_data.driverGeneratorOutputPath))
-                {
                     Debug.LogError("[Udon Expression Driver] Please specify a class name.");
-                }
                 else if (string.IsNullOrEmpty(_data.driverGeneratorOutputPath))
-                {
                     Debug.LogError("[Udon Expression Driver] Please specify a output path.");
-                }
 
                 GenerateDriverBehaviour(_data.driverGeneratorInputPath, _data.driverGeneratorOutputPath,
                     _data.driverGeneratorClassName);
@@ -179,7 +169,8 @@ namespace UdonExpressionDriver.Editor
                     Debug.LogError("[Udon Expression Driver] Could not locate JSON input file.");
                     return;
                 }
-                else if (string.IsNullOrEmpty(_data.menuGeneratorOutputPath))
+
+                if (string.IsNullOrEmpty(_data.menuGeneratorOutputPath))
                 {
                     Debug.LogError("[Udon Expression Driver] Specify an output path.");
                     return;
@@ -202,6 +193,14 @@ namespace UdonExpressionDriver.Editor
             };
         }
 
+
+        [MenuItem("Window/UI Toolkit/UdonExpressionDriverWindow")]
+        public static void ShowWindow()
+        {
+            var wnd = GetWindow<UdonExpressionDriverWindow>();
+            wnd.titleContent = new GUIContent("UdonExpressionDriverWindow");
+        }
+
         private (string, string, string) GetPackageInfo()
         {
             var path = AssetDatabase.GetAssetPath(MonoScript.FromScriptableObject(this));
@@ -216,7 +215,7 @@ namespace UdonExpressionDriver.Editor
             var export = new Dictionary<string, object>
             {
                 { "parameters", parameters.parameters },
-                { "controls", menu.controls },
+                { "controls", menu.controls }
             };
             var json = UEDSerializer.Serialize(export);
 
@@ -261,7 +260,7 @@ namespace UdonExpressionDriver.Editor
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
-            Selection.objects = new UnityEngine.Object[] { udonProgram, monoScript };
+            Selection.objects = new Object[] { udonProgram, monoScript };
             EditorUtility.FocusProjectWindow();
 
             Debug.Log("[Udon Expression Driver] Finished writing behaviour class file.");
