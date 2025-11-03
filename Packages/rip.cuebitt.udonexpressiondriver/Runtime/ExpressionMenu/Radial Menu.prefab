@@ -98,9 +98,7 @@ MonoBehaviour:
   segmentCount: 8
   innerRadius: 0.1
   outerRadius: 0.3
-  outlineThickness: 0.01
   radialSteps: 48
-  outlineOffsetY: 0.0005
   segments:
   - {fileID: 7767139246122916449}
   - {fileID: 7939402957097832145}
@@ -111,7 +109,6 @@ MonoBehaviour:
   - {fileID: 6015885320696148338}
   - {fileID: 4898107782531793001}
   gradientMaterial: {fileID: 2100000, guid: 7aa33669df57c3f419003c515c7d8870, type: 2}
-  outlineMaterial: {fileID: 2100000, guid: 1da993f559270c14e8576f7f1491ffd9, type: 2}
 --- !u!114 &1921552578177886860
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -156,6 +153,10 @@ PrefabInstance:
     - target: {fileID: 6137972904857647603, guid: fc65fbd8e794ab64face788f75898c31, type: 3}
       propertyPath: m_Name
       value: Segment Button (2)
+      objectReference: {fileID: 0}
+    - target: {fileID: 6137972904857647603, guid: fc65fbd8e794ab64face788f75898c31, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6614021307698985699, guid: fc65fbd8e794ab64face788f75898c31, type: 3}
       propertyPath: m_LocalPosition.x
@@ -232,6 +233,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Segment Button (6)
       objectReference: {fileID: 0}
+    - target: {fileID: 6137972904857647603, guid: fc65fbd8e794ab64face788f75898c31, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 6614021307698985699, guid: fc65fbd8e794ab64face788f75898c31, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -306,6 +311,10 @@ PrefabInstance:
     - target: {fileID: 6137972904857647603, guid: fc65fbd8e794ab64face788f75898c31, type: 3}
       propertyPath: m_Name
       value: Segment Button (4)
+      objectReference: {fileID: 0}
+    - target: {fileID: 6137972904857647603, guid: fc65fbd8e794ab64face788f75898c31, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6614021307698985699, guid: fc65fbd8e794ab64face788f75898c31, type: 3}
       propertyPath: m_LocalPosition.x
@@ -382,6 +391,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Segment Button (7)
       objectReference: {fileID: 0}
+    - target: {fileID: 6137972904857647603, guid: fc65fbd8e794ab64face788f75898c31, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 6614021307698985699, guid: fc65fbd8e794ab64face788f75898c31, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -456,6 +469,10 @@ PrefabInstance:
     - target: {fileID: 6137972904857647603, guid: fc65fbd8e794ab64face788f75898c31, type: 3}
       propertyPath: m_Name
       value: Segment Button (3)
+      objectReference: {fileID: 0}
+    - target: {fileID: 6137972904857647603, guid: fc65fbd8e794ab64face788f75898c31, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6614021307698985699, guid: fc65fbd8e794ab64face788f75898c31, type: 3}
       propertyPath: m_LocalPosition.x
@@ -532,6 +549,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Segment Button (1)
       objectReference: {fileID: 0}
+    - target: {fileID: 6137972904857647603, guid: fc65fbd8e794ab64face788f75898c31, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 6614021307698985699, guid: fc65fbd8e794ab64face788f75898c31, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -607,6 +628,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Segment Button (5)
       objectReference: {fileID: 0}
+    - target: {fileID: 6137972904857647603, guid: fc65fbd8e794ab64face788f75898c31, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 6614021307698985699, guid: fc65fbd8e794ab64face788f75898c31, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -677,6 +702,10 @@ PrefabInstance:
     - target: {fileID: 6137972904857647603, guid: fc65fbd8e794ab64face788f75898c31, type: 3}
       propertyPath: m_Name
       value: Segment Button
+      objectReference: {fileID: 0}
+    - target: {fileID: 6137972904857647603, guid: fc65fbd8e794ab64face788f75898c31, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6614021307698985699, guid: fc65fbd8e794ab64face788f75898c31, type: 3}
       propertyPath: m_LocalPosition.x

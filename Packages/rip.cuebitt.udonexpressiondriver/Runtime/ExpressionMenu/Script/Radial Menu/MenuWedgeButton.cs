@@ -4,7 +4,7 @@ using UnityEngine;
 namespace UdonExpressionDriver
 {
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
-    public class CircleSegmentButton : UdonSharpBehaviour
+    public class MenuWedgeButton : UdonSharpBehaviour
     {
         public int segmentIndex;
         

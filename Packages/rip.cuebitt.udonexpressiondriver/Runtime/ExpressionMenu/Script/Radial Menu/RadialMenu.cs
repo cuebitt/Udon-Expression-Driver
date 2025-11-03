@@ -1,4 +1,5 @@
-﻿using UdonSharp;
+﻿using TMPro;
+using UdonSharp;
 using UnityEngine;
 
 namespace UdonExpressionDriver
@@ -11,18 +12,32 @@ namespace UdonExpressionDriver
     public class RadialMenu : UdonSharpBehaviour
     {
         [Header("Circle Segment Generator Settings")]
-        [Range(1, 8)] public int segmentCount = 8;
-        public float innerRadius = 0.1f;
-        public float outerRadius = 0.3f;
-        public int radialSteps = 48;
+        [Range(1, 8)] [SerializeField] private int segmentCount = 8;
+        [SerializeField] private float innerRadius = 0.1f;
+        [SerializeField] private float outerRadius = 0.3f;
+        [SerializeField] private int radialSteps = 48;
+
+        [Header("Content")]
+        public string[] labels;
+        public Texture2D[] icons;
 
         [Header("Internal")]
-        public GameObject[] segments = new GameObject[8];
-        public Material gradientMaterial;
+        [SerializeField] private GameObject[] segments = new GameObject[8];
+        [SerializeField] private Material gradientMaterial;
+        [SerializeField] private Material[] iconMaterials;
 
         private void Start()
         {
             _SetupSegments();
+        }
+
+        private void OnDestroy()
+        {
+            // Reset all the icon material textures
+            foreach (var mat in iconMaterials)
+            {
+                mat.mainTexture = null;
+            }
         }
 
 
@@ -47,6 +62,7 @@ namespace UdonExpressionDriver
                 seg.SetActive(active);
                 if (!active) continue;
 
+                // Setup segment wedge mesh
                 var meshHolder = seg.transform.Find("Mesh Holder");
                 if (meshHolder)
                     meshHolder.localRotation = Quaternion.Euler(0f, angleStep * i - startAngle, 0f); // clockwise
@@ -60,6 +76,59 @@ namespace UdonExpressionDriver
 
                 var mc = meshHolder ? meshHolder.GetComponent<MeshCollider>() : null;
                 if (mc != null && mf != null) mc.sharedMesh = mf.sharedMesh;
+
+                // Setup label and icon
+                var label = seg.transform.Find("Label");
+                if (label)
+                {
+                    var text = label.Find("Text");
+                    if (text && labels.Length > i && !string.IsNullOrEmpty(labels[i]))
+                    {
+                        text.gameObject.GetComponent<TMP_Text>().text = labels[i];
+                        text.gameObject.SetActive(true);
+                    }
+                    else
+                    {
+                        text.gameObject.SetActive(false);
+                    }
+
+                    var icon = label.Find("Icon");
+                    if (icon && icons.Length > i && icons[i] != null)
+                    {
+                        var iconMr = icon.GetComponent<MeshRenderer>();
+                        if (iconMr)
+                        {
+                            var iconMaterial = iconMr.sharedMaterial;
+                            if (iconMaterial == null)
+                            {
+                                iconMaterial = iconMaterials[i];
+                            }
+
+                            iconMaterial.mainTexture = icons[i];
+                            iconMr.sharedMaterial = iconMaterial;
+                            icon.gameObject.SetActive(true);
+                        }
+                    }
+                    else
+                    {
+                        icon.gameObject.SetActive(false);
+                    }
+
+                    var midAngle = Mathf.Deg2Rad * (angleStep * i); // middle of this segment in radians
+                    var midRadius = (innerRadius + outerRadius) * 0.5f;
+
+                    // Position along XZ plane
+                    label.localPosition = new Vector3(
+                        Mathf.Sin(midAngle) * midRadius,
+                        0.001f,
+                        (Mathf.Cos(midAngle) * midRadius) - 0.2f * midRadius
+                    );
+
+                    label.localScale *= 0.75f * midRadius;
+
+                    // Face outward from center
+                    label.localRotation = Quaternion.Euler(90f, 0f, 0f); // upright and facing outward
+                }
             }
         }
 

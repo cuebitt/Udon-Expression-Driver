@@ -1462,6 +1462,18 @@ PrefabInstance:
       propertyPath: m_Mesh
       value: 
       objectReference: {fileID: 2049863376}
+    - target: {fileID: 7920356246925325919, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 7920356246925325919, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 7920356246925325919, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: -90
+      objectReference: {fileID: 0}
     - target: {fileID: 8155319462443130198, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
       propertyPath: m_Mesh
       value: 
@@ -1487,9 +1499,81 @@ PrefabInstance:
       value: 1.5
       objectReference: {fileID: 0}
     - target: {fileID: 8609286741298517488, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
+      propertyPath: icons.Array.size
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 8609286741298517488, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
+      propertyPath: outlineThickness
+      value: 0.025
+      objectReference: {fileID: 0}
+    - target: {fileID: 8609286741298517488, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
+      propertyPath: labels.Array.size
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 8609286741298517488, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
+      propertyPath: icons.Array.data[0]
+      value: 
+      objectReference: {fileID: 10300, guid: 0000000000000000f000000000000000, type: 0}
+    - target: {fileID: 8609286741298517488, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
+      propertyPath: icons.Array.data[1]
+      value: 
+      objectReference: {fileID: 10309, guid: 0000000000000000f000000000000000, type: 0}
+    - target: {fileID: 8609286741298517488, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
+      propertyPath: icons.Array.data[2]
+      value: 
+      objectReference: {fileID: 10307, guid: 0000000000000000f000000000000000, type: 0}
+    - target: {fileID: 8609286741298517488, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
+      propertyPath: labels.Array.data[0]
+      value: a
+      objectReference: {fileID: 0}
+    - target: {fileID: 8609286741298517488, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
+      propertyPath: labels.Array.data[1]
+      value: b
+      objectReference: {fileID: 0}
+    - target: {fileID: 8609286741298517488, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
+      propertyPath: labels.Array.data[3]
+      value: c
+      objectReference: {fileID: 0}
+    - target: {fileID: 8609286741298517488, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
+      propertyPath: iconMaterials.Array.size
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 8609286741298517488, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
       propertyPath: serializationData.Prefab
       value: 
       objectReference: {fileID: 8609286741298517488, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
+    - target: {fileID: 8609286741298517488, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
+      propertyPath: iconMaterials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: 168ea38dd202ba54192556ddd6eac3a8, type: 2}
+    - target: {fileID: 8609286741298517488, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
+      propertyPath: iconMaterials.Array.data[1]
+      value: 
+      objectReference: {fileID: 2100000, guid: 39e51c74fcc038f409cc9093aeedc96e, type: 2}
+    - target: {fileID: 8609286741298517488, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
+      propertyPath: iconMaterials.Array.data[2]
+      value: 
+      objectReference: {fileID: 2100000, guid: 8af13f42a561b1e408bff57067a4f812, type: 2}
+    - target: {fileID: 8609286741298517488, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
+      propertyPath: iconMaterials.Array.data[3]
+      value: 
+      objectReference: {fileID: 2100000, guid: 0b354816710417b4cb7f1688b51ad14b, type: 2}
+    - target: {fileID: 8609286741298517488, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
+      propertyPath: iconMaterials.Array.data[4]
+      value: 
+      objectReference: {fileID: 2100000, guid: ac59b5e8286189c48a3afc70aba25f53, type: 2}
+    - target: {fileID: 8609286741298517488, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
+      propertyPath: iconMaterials.Array.data[5]
+      value: 
+      objectReference: {fileID: 2100000, guid: 0d6e79e080bcea541ab6b343a2c1a40a, type: 2}
+    - target: {fileID: 8609286741298517488, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
+      propertyPath: iconMaterials.Array.data[6]
+      value: 
+      objectReference: {fileID: 2100000, guid: b1d9b32290d6aee4a8b43e8e7c1d1551, type: 2}
+    - target: {fileID: 8609286741298517488, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
+      propertyPath: iconMaterials.Array.data[7]
+      value: 
+      objectReference: {fileID: 2100000, guid: 53f51dc8ba8bba948939c8bf29b29897, type: 2}
     - target: {fileID: 8611224535393660480, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
       propertyPath: m_Mesh
       value: 
