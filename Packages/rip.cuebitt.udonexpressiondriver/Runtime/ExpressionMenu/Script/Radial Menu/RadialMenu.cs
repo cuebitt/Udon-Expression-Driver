@@ -35,12 +35,11 @@ namespace UdonExpressionDriver
         /// - Activates or deactivates each segment based on <see cref="segmentCount"/>.
         /// - Positions and rotates each segment correctly around the center.
         /// - Generates the mesh with gradient and outlines using <see cref="CreateWedgeMesh"/>.
-        /// - Assigns the mesh to <see cref="MeshFilter"/>, materials to <see cref="MeshRenderer"/>,
-        ///   and sets up the <see cref="MeshCollider"/> (convex) for interaction in VRChat.
         /// </summary>
         public void _SetupSegments()
         {
             var angleStep = 360f / segmentCount;
+            var startAngle = angleStep / 2f;
 
             for (var i = 0; i < segments.Length; i++)
             {
@@ -51,23 +50,22 @@ namespace UdonExpressionDriver
                 seg.SetActive(active);
                 if (!active) continue;
 
-                seg.transform.localPosition = Vector3.zero;
-                seg.transform.localRotation = Quaternion.Euler(0f, angleStep * i, 0f);
+                var meshHolder = seg.transform.Find("Mesh Holder");
+                if (meshHolder)
+                    meshHolder.localRotation = Quaternion.Euler(0f, (angleStep * i) - startAngle, 0f); // clockwise
 
-                var mesh = CreateWedgeMesh(angleStep, innerRadius, outerRadius, radialSteps, outlineThickness,
-                    outlineOffsetY);
+                var mf = meshHolder ? meshHolder.GetComponent<MeshFilter>() : null;
+                if (mf)
+                    mf.sharedMesh = CreateWedgeMesh(angleStep, innerRadius, outerRadius, radialSteps, outlineThickness,
+                        outlineOffsetY);
 
-                var mf = seg.GetComponent<MeshFilter>();
-                if (mf) mf.sharedMesh = mesh;
-
-                var mr = seg.GetComponent<MeshRenderer>();
+                var mr = meshHolder ? meshHolder.GetComponent<MeshRenderer>() : null;
                 if (mr) mr.sharedMaterials = new[] { gradientMaterial, outlineMaterial };
 
-                var mc = seg.GetComponent<MeshCollider>();
-                if (mc)
+                var mc = meshHolder ? meshHolder.GetComponent<MeshCollider>() : null;
+                if (mc && mf)
                 {
-                    mc.sharedMesh = mesh;
-                    mc.convex = true;
+                    mc.sharedMesh = mf.sharedMesh;
                 }
             }
         }
