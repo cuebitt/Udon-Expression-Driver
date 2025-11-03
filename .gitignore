@@ -138,6 +138,9 @@ Assets/Plugins/
 Assets/Plugins.meta
 
 Assets/Test*Data
-UIElementsSchema
+Assets/Test*Data.meta
+
 Assets/TextMesh*Pro
 Assets/TextMesh*Pro.meta
+
+UIElementsSchema
