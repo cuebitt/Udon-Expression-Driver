@@ -1521,18 +1521,26 @@ PrefabInstance:
     - target: {fileID: 8609286741298517488, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
       propertyPath: icons.Array.data[2]
       value: 
-      objectReference: {fileID: 10307, guid: 0000000000000000f000000000000000, type: 0}
+      objectReference: {fileID: 10906, guid: 0000000000000000f000000000000000, type: 0}
+    - target: {fileID: 8609286741298517488, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
+      propertyPath: icons.Array.data[3]
+      value: 
+      objectReference: {fileID: 0}
     - target: {fileID: 8609286741298517488, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
       propertyPath: labels.Array.data[0]
-      value: a
+      value: One
       objectReference: {fileID: 0}
     - target: {fileID: 8609286741298517488, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
       propertyPath: labels.Array.data[1]
-      value: b
+      value: Two
+      objectReference: {fileID: 0}
+    - target: {fileID: 8609286741298517488, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
+      propertyPath: labels.Array.data[2]
+      value: 
       objectReference: {fileID: 0}
     - target: {fileID: 8609286741298517488, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
       propertyPath: labels.Array.data[3]
-      value: c
+      value: Three
       objectReference: {fileID: 0}
     - target: {fileID: 8609286741298517488, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
       propertyPath: iconMaterials.Array.size
