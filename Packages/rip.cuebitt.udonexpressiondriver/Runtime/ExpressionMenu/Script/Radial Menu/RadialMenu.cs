@@ -40,6 +40,11 @@ namespace UdonExpressionDriver
             }
         }
 
+        public void OnButtonPress(int index)
+        {
+            Debug.Log($"Button pressed: {index}");
+        }
+
 
         // ReSharper disable once MemberCanBePrivate.Global
         /// <summary>

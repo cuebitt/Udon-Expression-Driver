@@ -7,11 +7,14 @@ namespace UdonExpressionDriver
     public class MenuWedgeButton : UdonSharpBehaviour
     {
         public int segmentIndex;
+        public RadialMenu radialMenu;
         
         public override void Interact()
         {
-            // Todo trigger some event here
-            Debug.Log($"Clicked segment {segmentIndex}");
+            if (radialMenu != null)
+            {
+                radialMenu.OnButtonPress(segmentIndex);
+            }
         }
     }
 }
