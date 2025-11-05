@@ -103,11 +103,16 @@ namespace UdonExpressionDriver
             {
                 var pv = new Vector2(Mathf.Clamp(value.x, 0f, 1f), Mathf.Clamp(value.y, 0f, 1f));
                 puppetValue = pv;
-
+                
+                // Set pointer value
                 var newPos = new Vector3(_valuePanelSize.x * value.x, _valuePanelSize.y * value.y, 0);
                 newPos -= new Vector3(_valuePanelSize.x * 0.5f, _valuePanelSize.y * 0.5f, 0);
 
                 ((RectTransform)valuePointer.transform).localPosition = newPos;
+                
+                // Set slider values
+                xAxisSlider.value = pv.x;
+                yAxisSlider.value = pv.y;
             }
         }
 
@@ -212,6 +217,27 @@ namespace UdonExpressionDriver
 
                 eventHandlerBehaviour.SendCustomNetworkEvent(NetworkEventTarget.Self, twoAxisEventName, xValue, yValue);
             }
+        }
+
+        public static Vector4 ToFourAxis(Vector2 value)
+        {
+            // X direction
+            var dxMinus = Mathf.Max(1 - value.x * 2, 0f);
+            var dxPlus  = Mathf.Max(value.x * 2 - 1, 0f);
+            
+            // Y direction
+            var dyMinus = Mathf.Max(1 - value.y * 2, 0f);
+            var dyPlus  = Mathf.Max(value.y * 2 - 1, 0f);
+            
+            return  new Vector4(dxMinus, dxPlus, dyMinus, dyPlus);
+        }
+
+        public static Vector2 ToTwoAxis(Vector4 value)
+        {
+            var xAxis = value.x + (value.x / 2f) + value.y + (value.y / 2f);
+            var yAxis = value.z + (value.z / 2f) + value.w + (value.w / 2f);
+            
+            return new Vector2(xAxis, yAxis);
         }
     }
 }

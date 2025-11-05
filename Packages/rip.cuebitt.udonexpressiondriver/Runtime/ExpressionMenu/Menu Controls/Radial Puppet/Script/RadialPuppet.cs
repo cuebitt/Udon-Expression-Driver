@@ -42,6 +42,7 @@ namespace UdonExpressionDriver
 
                 if (valueLabel != null) valueLabel.text = $"{this.value * 100:F0}%";
                 if (radialSlider != null) radialSlider.value = this.value;
+                if (lowerSlider != null)  lowerSlider.value = this.value;
             }
         }
 
