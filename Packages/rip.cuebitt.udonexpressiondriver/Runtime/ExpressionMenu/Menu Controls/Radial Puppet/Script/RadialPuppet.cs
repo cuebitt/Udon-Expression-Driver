@@ -1,5 +1,6 @@
 ﻿using TMPro;
 using UdonSharp;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
 using VRC.Udon.Common.Interfaces;
@@ -10,8 +11,24 @@ namespace UdonExpressionDriver
     public class RadialPuppet : UdonSharpBehaviour
     {
         [Header("Content")]
-        [SerializeField, FieldChangeCallback(nameof(Value)), Range(0, 1)]
+        
+        [SerializeField] [FieldChangeCallback(nameof(Value))] [Range(0, 1)]
         private float value;
+
+        [SerializeField] [FieldChangeCallback(nameof(Label))]
+        private string label = "Radial Puppet";
+
+        [Header("Event Handler")]
+        
+        [SerializeField] private UdonSharpBehaviour eventHandlerBehaviour;
+        [SerializeField] private string eventName;
+
+        [Header("Internal")]
+        
+        [SerializeField] private Slider radialSlider;
+        [SerializeField] private Slider lowerSlider;
+        [SerializeField] private TMP_Text headerLabel;
+        [SerializeField] private TMP_Text valueLabel;
 
         public float Value
         {
@@ -25,9 +42,6 @@ namespace UdonExpressionDriver
             }
         }
 
-        [SerializeField, FieldChangeCallback(nameof(Label))]
-        private string label = "Radial Puppet";
-
         public string Label
         {
             get => label;
@@ -39,41 +53,23 @@ namespace UdonExpressionDriver
             }
         }
 
-        [Header("Event Handler")] [SerializeField]
-        private UdonSharpBehaviour eventHandlerBehaviour;
+#if UNITY_EDITOR && !COMPILER_UDONSHARP
+        public void OnValidate()
+        {
+            Value = value;
+            Label = label;
 
-        [SerializeField] private string eventName;
-
-        [Header("Internal")] [SerializeField] private Slider radialSlider;
-        [SerializeField] private Slider lowerSlider;
-        [SerializeField] private TMP_Text headerLabel;
-        [SerializeField] private TMP_Text valueLabel;
-
-
+            if (lowerSlider != null)
+                EditorApplication.delayCall += () => { lowerSlider.SetValueWithoutNotify(value); };
+        }
+#endif
+        
         public void OnSliderValueChanged()
         {
             Value = lowerSlider.value;
 
             if (eventHandlerBehaviour != null && !string.IsNullOrEmpty(eventName))
-            {
-                SendCustomNetworkEvent(NetworkEventTarget.Self, eventName, Value);
-            }
+                eventHandlerBehaviour.SendCustomNetworkEvent(NetworkEventTarget.Self, eventName, Value);
         }
-
-#if UNITY_EDITOR && !COMPILER_UDONSHARP
-        public void OnValidate()
-        {
-            Value = this.value;
-            Label = this.label;
-
-            if (lowerSlider != null)
-            {
-                UnityEditor.EditorApplication.delayCall += () =>
-                {
-                    lowerSlider.SetValueWithoutNotify(this.value);
-                };
-            }
-        }
-#endif
     }
 }
