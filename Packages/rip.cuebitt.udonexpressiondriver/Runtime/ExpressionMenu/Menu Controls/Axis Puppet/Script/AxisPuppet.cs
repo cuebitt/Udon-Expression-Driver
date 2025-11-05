@@ -190,12 +190,15 @@ namespace UdonExpressionDriver
             {
                 if (string.IsNullOrEmpty(fourAxisEventName)) return;
 
-                var m = PuppetValue.magnitude;
+                var coords = PuppetValue;
+                
+                // X direction
+                var dxPlus  = Mathf.Max(coords.x * 2 - 1, 0f);
+                var dxMinus = Mathf.Max(1 - coords.x * 2, 0f);
 
-                var dxPlus = Mathf.Max(0f, PuppetValue.x / m);
-                var dxMinus = Mathf.Max(0f, -PuppetValue.x / m);
-                var dyPlus = Mathf.Max(0f, PuppetValue.y / m);
-                var dyMinus = Mathf.Max(0f, -PuppetValue.y / m);
+                // Y direction
+                var dyPlus  = Mathf.Max(coords.y * 2 - 1, 0f);
+                var dyMinus = Mathf.Max(1 - coords.y * 2, 0f);
 
                 eventHandlerBehaviour.SendCustomNetworkEvent(NetworkEventTarget.Self, fourAxisEventName, dxMinus,
                     dxPlus, dyMinus, dyPlus);

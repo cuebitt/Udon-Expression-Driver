@@ -35,8 +35,6 @@ namespace UdonExpressionDriver
         [NetworkCallable]
         public void OnFourAxisValueChanged(float negXValue, float posXValue, float negYValue, float posYValue)
         {
-            Debug.Log("Four Axis value changed!");
-
             fourAxisNegX.text = negXValue.ToString(CultureInfo.InvariantCulture);
             fourAxisPosX.text = posXValue.ToString(CultureInfo.InvariantCulture);
             fourAxisNegY.text = negYValue.ToString(CultureInfo.InvariantCulture);
