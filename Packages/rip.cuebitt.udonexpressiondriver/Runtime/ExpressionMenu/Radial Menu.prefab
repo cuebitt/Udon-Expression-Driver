@@ -98,7 +98,8 @@ MonoBehaviour:
   segmentCount: 8
   innerRadius: 0.1
   outerRadius: 0.3
-  radialSteps: 48
+  radialSteps: 16
+  outlineThickness: 0.1
   labels: []
   icons: []
   segments:
