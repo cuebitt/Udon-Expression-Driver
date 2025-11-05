@@ -1,5 +1,6 @@
 ﻿using TMPro;
 using UdonSharp;
+using UnityEditor;
 using UnityEngine;
 
 namespace UdonExpressionDriver
@@ -29,6 +30,7 @@ namespace UdonExpressionDriver
         private void Start()
         {
             _SetupSegments();
+            _SetupLabelsAndIcons();
         }
 
         private void OnDestroy()
@@ -81,7 +83,18 @@ namespace UdonExpressionDriver
 
                 var mc = meshHolder ? meshHolder.GetComponent<MeshCollider>() : null;
                 if (mc != null && mf != null) mc.sharedMesh = mf.sharedMesh;
+            }
+        }
 
+        private void _SetupLabelsAndIcons()
+        {
+            var angleStep = 360f / segmentCount;
+            
+            for (var i = 0; i < segments.Length; i++)
+            {
+                var seg = segments[i];
+                if (!seg) continue;
+                
                 // Setup label and icon
                 var label = seg.transform.Find("Label");
                 if (label)
@@ -129,12 +142,13 @@ namespace UdonExpressionDriver
                         (Mathf.Cos(midAngle) * midRadius) - 0.2f * midRadius
                     );
 
-                    label.localScale *= 0.75f * midRadius;
+                    label.localScale = Vector3.one * 0.25f * midRadius;
 
                     // Face outward from center
                     label.localRotation = Quaternion.Euler(90f, 0f, 0f); // upright and facing outward
                 }
             }
+                
         }
 
 
@@ -207,5 +221,12 @@ namespace UdonExpressionDriver
 
             return mesh;
         }
+        
+#if !COMPILER_UDONSHARP && UNITY_EDITOR
+        private void OnValidate()
+        {
+            EditorApplication.delayCall += _SetupSegments;
+        }
+#endif
     }
 }

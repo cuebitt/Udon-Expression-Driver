@@ -1,9 +1,12 @@
 ﻿using TMPro;
 using UdonSharp;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
 using VRC.Udon.Common.Interfaces;
+
+#if !COMPILER_UDONSHARP && UNITY_EDITOR
+using UnityEditor;
+#endif
 
 namespace UdonExpressionDriver
 {
