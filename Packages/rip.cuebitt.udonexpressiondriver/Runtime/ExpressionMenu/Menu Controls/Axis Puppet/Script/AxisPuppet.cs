@@ -154,8 +154,6 @@ namespace UdonExpressionDriver
                 var newPos = new Vector3(vps.x * PuppetValue.x, vps.y * PuppetValue.y, 0);
                 newPos -= new Vector3(vps.x * 0.5f, vps.y * 0.5f, 0);
 
-                Debug.Log(newPos);
-
                 ((RectTransform)valuePointer.transform).localPosition = newPos;
             }
         }
