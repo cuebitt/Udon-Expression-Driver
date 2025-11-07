@@ -29,18 +29,13 @@ namespace UdonExpressionDriver
         [Header("Internal")]
         [SerializeField] private GameObject[] segments = new GameObject[8];
         [SerializeField] private Material gradientMaterial;
-        [SerializeField] private Material[] iconMaterials;
+        
+        private readonly int _mainTexShaderProperty = Shader.PropertyToID("_MainTex");
 
         private void Start()
         {
             _SetupSegments();
             _SetupLabelsAndIcons();
-        }
-
-        private void OnDestroy()
-        {
-            // Reset all the icon material textures
-            foreach (var mat in iconMaterials) mat.mainTexture = null;
         }
 
 #if !COMPILER_UDONSHARP && UNITY_EDITOR
@@ -123,11 +118,11 @@ namespace UdonExpressionDriver
                         var iconMr = icon.GetComponent<MeshRenderer>();
                         if (iconMr)
                         {
-                            var iconMaterial = iconMr.sharedMaterial;
-                            if (iconMaterial == null) iconMaterial = iconMaterials[i];
-
-                            iconMaterial.mainTexture = icons[i];
-                            iconMr.sharedMaterial = iconMaterial;
+                            var block = new MaterialPropertyBlock();
+                            iconMr.GetPropertyBlock(block);
+                            block.SetTexture(_mainTexShaderProperty, icons[i]);
+                            iconMr.SetPropertyBlock(block);
+                            
                             icon.gameObject.SetActive(true);
                         }
                     }
