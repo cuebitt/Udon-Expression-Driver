@@ -39,6 +39,7 @@ namespace UdonExpressionDriver
         [SerializeField] private UdonSharpBehaviour eventHandlerBehaviour;
         [SerializeField] private string twoAxisEventName;
         [SerializeField] private string fourAxisEventName;
+        [SerializeField] private string headerClickedEventName;
 
         [Header("Internal")]
         
@@ -127,24 +128,24 @@ namespace UdonExpressionDriver
         {
             Label = label;
 
-            var _axisLabels = new string[4];
-            for (var i = 0; i < axisLabels.Length; i++) _axisLabels[i] = axisLabels[i];
+            var axisLabelsCopy = new string[4];
+            for (var i = 0; i < axisLabels.Length; i++) axisLabelsCopy[i] = axisLabels[i];
 
-            if (_axisLabels.Length < 4)
-                for (var i = _axisLabels.Length; i < 4; i++)
-                    _axisLabels[i] = "";
+            if (axisLabelsCopy.Length < 4)
+                for (var i = axisLabelsCopy.Length; i < 4; i++)
+                    axisLabelsCopy[i] = "";
 
             if (AxisPuppetType == AxisPuppetType.Four)
             {
-                if (leftAxisLabel != null) leftAxisLabel.text = _axisLabels[0];
-                if (rightAxisLabel != null) rightAxisLabel.text = _axisLabels[1];
-                if (bottomAxisLabel != null) bottomAxisLabel.text = _axisLabels[2];
-                if (topAxisLabel != null) topAxisLabel.text = _axisLabels[3];
+                if (leftAxisLabel != null) leftAxisLabel.text = axisLabelsCopy[0];
+                if (rightAxisLabel != null) rightAxisLabel.text = axisLabelsCopy[1];
+                if (bottomAxisLabel != null) bottomAxisLabel.text = axisLabelsCopy[2];
+                if (topAxisLabel != null) topAxisLabel.text = axisLabelsCopy[3];
             }
             else if (AxisPuppetType == AxisPuppetType.Two)
             {
-                if (rightAxisLabel != null) rightAxisLabel.text = _axisLabels[0];
-                if (topAxisLabel != null) topAxisLabel.text = _axisLabels[1];
+                if (rightAxisLabel != null) rightAxisLabel.text = axisLabelsCopy[0];
+                if (topAxisLabel != null) topAxisLabel.text = axisLabelsCopy[1];
 
                 if (leftAxisLabel != null) leftAxisLabel.text = "";
                 if (bottomAxisLabel != null) bottomAxisLabel.text = "";
@@ -185,6 +186,12 @@ namespace UdonExpressionDriver
             PuppetValue = newPos;
 
             SendValueUpdate();
+        }
+
+        public void OnHeaderClicked()
+        {
+            if (eventHandlerBehaviour != null && !string.IsNullOrEmpty(headerClickedEventName))
+                eventHandlerBehaviour.SendCustomEvent(headerClickedEventName);
         }
 
         private void SendValueUpdate()

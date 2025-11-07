@@ -1,6 +1,7 @@
 ﻿using TMPro;
 using UdonSharp;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 using VRC.Udon.Common.Interfaces;
 
@@ -24,7 +25,8 @@ namespace UdonExpressionDriver
         [Header("Event Handler")]
         
         [SerializeField] private UdonSharpBehaviour eventHandlerBehaviour;
-        [SerializeField] private string eventName;
+        [SerializeField] private string valueChangedEventName;
+        [SerializeField] private string headerClickedEventName;
 
         [Header("Internal")]
         
@@ -72,8 +74,14 @@ namespace UdonExpressionDriver
         {
             Value = lowerSlider.value;
 
-            if (eventHandlerBehaviour != null && !string.IsNullOrEmpty(eventName))
-                eventHandlerBehaviour.SendCustomNetworkEvent(NetworkEventTarget.Self, eventName, Value);
+            if (eventHandlerBehaviour != null && !string.IsNullOrEmpty(valueChangedEventName))
+                eventHandlerBehaviour.SendCustomNetworkEvent(NetworkEventTarget.Self, valueChangedEventName, Value);
+        }
+
+        public void OnHeaderClicked()
+        {
+            if (eventHandlerBehaviour != null && !string.IsNullOrEmpty(headerClickedEventName))
+                eventHandlerBehaviour.SendCustomEvent(headerClickedEventName);
         }
     }
 }
