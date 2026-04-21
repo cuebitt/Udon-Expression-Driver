@@ -1,4 +1,4 @@
-﻿using TMPro;
+using TMPro;
 using UdonSharp;
 using UnityEngine;
 
@@ -15,25 +15,39 @@ namespace UdonExpressionDriver
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     public class RadialMenu : UdonSharpBehaviour
     {
+        private const float DefaultInnerRadius = 0.1f;
+        private const float DefaultOuterRadius = 0.3f;
+        private const int DefaultRadialSteps = 48;
+        private const float DefaultOutlineThickness = 0.01f;
+        private const float DefaultLabelHeightOffset = 0.001f;
+        private const float DefaultLabelScale = 0.25f;
+        private const float DefaultLabelZOffset = 0.2f;
+        private const int MaxSegmentArraySize = 8;
+
         [Header("Circle Segment Generator Settings")]
         [Range(1, 8)] [SerializeField] private int segmentCount = 8;
-        [SerializeField] private float innerRadius = 0.1f;
-        [SerializeField] private float outerRadius = 0.3f;
-        [SerializeField] private int radialSteps = 48;
-        [SerializeField] private float outlineThickness = 0.01f;
+        [SerializeField] private float innerRadius = DefaultInnerRadius;
+        [SerializeField] private float outerRadius = DefaultOuterRadius;
+        [SerializeField] private int radialSteps = DefaultRadialSteps;
+        [SerializeField] private float outlineThickness = DefaultOutlineThickness;
 
         [Header("Content")]
-        public string[] labels;
-        public Texture2D[] icons;
+        [Tooltip("Text labels for each segment. Leave empty to hide the label.")]
+        [SerializeField] private string[] labels;
+        [Tooltip("Icon textures for each segment. Leave null to hide the icon.")]
+        [SerializeField] private Texture2D[] icons;
 
         [Header("Internal")]
-        [SerializeField] private GameObject[] segments = new GameObject[8];
+        [Tooltip("Segment root GameObjects. Should have a 'Mesh Holder' child and 'Label' child.")]
+        [SerializeField] private GameObject[] segments = new GameObject[MaxSegmentArraySize];
+        [Tooltip("Material with gradient shader for segment fill.")]
         [SerializeField] private Material gradientMaterial;
-        
+
         private readonly int _mainTexShaderProperty = Shader.PropertyToID("_MainTex");
 
         private void Start()
         {
+            if (segments == null || segments.Length == 0) return;
             _SetupSegments();
             _SetupLabelsAndIcons();
         }
@@ -47,7 +61,6 @@ namespace UdonExpressionDriver
 
         public void OnButtonPress(int index)
         {
-            Debug.Log($"Button pressed: {index}");
         }
 
         // ReSharper disable once MemberCanBePrivate.Global
@@ -59,6 +72,8 @@ namespace UdonExpressionDriver
         /// </summary>
         public void _SetupSegments()
         {
+            if (segments == null || gradientMaterial == null) return;
+
             var angleStep = 360f / segmentCount;
             var startAngle = angleStep / 2f;
 
@@ -71,81 +86,88 @@ namespace UdonExpressionDriver
                 seg.SetActive(active);
                 if (!active) continue;
 
-                // Setup segment wedge mesh
                 var meshHolder = seg.transform.Find("Mesh Holder");
-                if (meshHolder)
-                    meshHolder.localRotation = Quaternion.Euler(0f, angleStep * i - startAngle, 0f); // clockwise
+                if (meshHolder == null) continue;
 
-                var mf = meshHolder ? meshHolder.GetComponent<MeshFilter>() : null;
+                meshHolder.localRotation = Quaternion.Euler(0f, angleStep * i - startAngle, 0f);
+
+                var mf = meshHolder.GetComponent<MeshFilter>();
                 if (mf != null)
                     mf.sharedMesh = CreateWedgeMesh(angleStep, innerRadius, outerRadius, radialSteps, outlineThickness);
 
-                var mr = meshHolder ? meshHolder.GetComponent<MeshRenderer>() : null;
+                var mr = meshHolder.GetComponent<MeshRenderer>();
                 if (mr != null) mr.sharedMaterials = new[] { gradientMaterial };
 
-                var mc = meshHolder ? meshHolder.GetComponent<MeshCollider>() : null;
+                var mc = meshHolder.GetComponent<MeshCollider>();
                 if (mc != null && mf != null) mc.sharedMesh = mf.sharedMesh;
             }
         }
 
         private void _SetupLabelsAndIcons()
         {
+            if (segments == null) return;
+
             var angleStep = 360f / segmentCount;
+            var hasLabels = labels != null && labels.Length > 0;
+            var hasIcons = icons != null && icons.Length > 0;
 
             for (var i = 0; i < segments.Length; i++)
             {
                 var seg = segments[i];
                 if (!seg) continue;
 
-                // Setup label and icon
                 var label = seg.transform.Find("Label");
-                if (label)
+                if (!label) continue;
+
+                var labelActive = false;
+
+                var text = label.Find("Text");
+                if (text && hasLabels && i < labels.Length && !string.IsNullOrEmpty(labels[i]))
                 {
-                    var text = label.Find("Text");
-                    if (text && labels.Length > i && !string.IsNullOrEmpty(labels[i]))
+                    var tmpText = text.gameObject.GetComponent<TMP_Text>();
+                    if (tmpText != null)
                     {
-                        text.gameObject.GetComponent<TMP_Text>().text = labels[i];
+                        tmpText.text = labels[i];
                         text.gameObject.SetActive(true);
+                        labelActive = true;
                     }
-                    else
-                    {
-                        text.gameObject.SetActive(false);
-                    }
-
-                    var icon = label.Find("Icon");
-                    if (icon && icons.Length > i && icons[i] != null)
-                    {
-                        var iconMr = icon.GetComponent<MeshRenderer>();
-                        if (iconMr)
-                        {
-                            var block = new MaterialPropertyBlock();
-                            iconMr.GetPropertyBlock(block);
-                            block.SetTexture(_mainTexShaderProperty, icons[i]);
-                            iconMr.SetPropertyBlock(block);
-                            
-                            icon.gameObject.SetActive(true);
-                        }
-                    }
-                    else
-                    {
-                        icon.gameObject.SetActive(false);
-                    }
-
-                    var midAngle = Mathf.Deg2Rad * (angleStep * i); // middle of this segment in radians
-                    var midRadius = (innerRadius + outerRadius) * 0.5f;
-
-                    // Position along XZ plane
-                    label.localPosition = new Vector3(
-                        Mathf.Sin(midAngle) * midRadius,
-                        0.001f,
-                        Mathf.Cos(midAngle) * midRadius - 0.2f * midRadius
-                    );
-
-                    label.localScale = Vector3.one * 0.25f * midRadius;
-
-                    // Face outward from center
-                    label.localRotation = Quaternion.Euler(90f, 0f, 0f); // upright and facing outward
                 }
+                else if (text)
+                {
+                    text.gameObject.SetActive(false);
+                }
+
+                var icon = label.Find("Icon");
+                if (icon && hasIcons && i < icons.Length && icons[i] != null)
+                {
+                    var iconMr = icon.GetComponent<MeshRenderer>();
+                    if (iconMr != null)
+                    {
+                        var block = new MaterialPropertyBlock();
+                        iconMr.GetPropertyBlock(block);
+                        block.SetTexture(_mainTexShaderProperty, icons[i]);
+                        iconMr.SetPropertyBlock(block);
+
+                        icon.gameObject.SetActive(true);
+                        labelActive = true;
+                    }
+                }
+                else if (icon)
+                {
+                    icon.gameObject.SetActive(false);
+                }
+
+                var midAngle = Mathf.Deg2Rad * (angleStep * i);
+                var midRadius = (innerRadius + outerRadius) * 0.5f;
+
+                label.localPosition = new Vector3(
+                    Mathf.Sin(midAngle) * midRadius,
+                    DefaultLabelHeightOffset,
+                    Mathf.Cos(midAngle) * midRadius - DefaultLabelZOffset * midRadius
+                );
+
+                label.localScale = Vector3.one * DefaultLabelScale * midRadius;
+                label.localRotation = Quaternion.Euler(90f, 0f, 0f);
             }
         }
 
@@ -224,11 +246,11 @@ namespace UdonExpressionDriver
         {
             var mesh = new Mesh();
 
-            var verts = new Vector3[8]; // 4 vertices per quad
+            var verts = new Vector3[8];
             var uvs = new Vector2[8];
-            var tris = new int[12]; // 2 triangles per quad
+            var tris = new int[12];
 
-            const float outlineY = 0.001f; // slight offset to avoid z-fighting
+            const float outlineY = DefaultLabelHeightOffset;
             var angleRad = Mathf.Deg2Rad * angleDeg;
 
             // Left edge outline (start of wedge)

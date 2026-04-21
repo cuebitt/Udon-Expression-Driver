@@ -1,4 +1,4 @@
-﻿using TMPro;
+using TMPro;
 using UdonSharp;
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -15,21 +15,24 @@ namespace UdonExpressionDriver
     public class RadialPuppet : UdonSharpBehaviour
     {
         [Header("Content")]
-        
-        [SerializeField] [FieldChangeCallback(nameof(Value))] [Range(0, 1)]
+
+        [SerializeField] [FieldChangeCallback(nameof(Value))] [Range(0, 1)] [Tooltip("Current value from 0 to 1")]
         private float value;
 
-        [SerializeField] [FieldChangeCallback(nameof(Label))]
+        [SerializeField] [FieldChangeCallback(nameof(Label))] [Tooltip("Display label for the header")]
         private string label = "Radial Puppet";
 
         [Header("Event Handler")]
-        
-        [SerializeField] private UdonSharpBehaviour eventHandlerBehaviour;
-        [SerializeField] private string valueChangedEventName;
-        [SerializeField] private string headerClickedEventName;
+
+        [SerializeField] [Tooltip("Behaviour to send events to")]
+        private UdonSharpBehaviour eventHandlerBehaviour;
+        [SerializeField] [Tooltip("Event name to fire when value changes")]
+        private string valueChangedEventName;
+        [SerializeField] [Tooltip("Event name to fire when header is clicked")]
+        private string headerClickedEventName;
 
         [Header("Internal")]
-        
+
         [SerializeField] private Slider radialSlider;
         [SerializeField] private Slider lowerSlider;
         [SerializeField] private TMP_Text headerLabel;
@@ -44,7 +47,7 @@ namespace UdonExpressionDriver
 
                 if (valueLabel != null) valueLabel.text = $"{this.value * 100:F0}%";
                 if (radialSlider != null) radialSlider.value = this.value;
-                if (lowerSlider != null)  lowerSlider.value = this.value;
+                if (lowerSlider != null) lowerSlider.value = this.value;
             }
         }
 
@@ -55,7 +58,7 @@ namespace UdonExpressionDriver
             {
                 label = value;
 
-                if (headerLabel != null) headerLabel.text = label;
+                if (headerLabel != null) headerLabel.text = value;
             }
         }
 
