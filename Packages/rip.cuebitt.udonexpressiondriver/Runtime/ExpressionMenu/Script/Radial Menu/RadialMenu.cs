@@ -139,8 +139,8 @@ namespace UdonExpressionDriver
                 bmf.sharedMesh = borders;
             }
 
-            var bmr = borderMeshHolder.GetComponent<MeshRenderer>();
-            if (bmr != null) bmr.sharedMaterials = _gradientMaterialArray;
+            // var bmr = borderMeshHolder.GetComponent<MeshRenderer>();
+            // if (bmr != null) bmr.sharedMaterials = _gradientMaterialArray;
         }
 
         private void _SetupSegmentsNoBorders()
@@ -180,8 +180,8 @@ namespace UdonExpressionDriver
                 }
                     
 
-                var mr = meshHolder.GetComponent<MeshRenderer>();
-                if (mr != null) mr.sharedMaterials = _gradientMaterialArray;
+                // var mr = meshHolder.GetComponent<MeshRenderer>();
+                // if (mr != null) mr.sharedMaterials = _gradientMaterialArray;
 
                 var mc = meshHolder.GetComponent<MeshCollider>();
                 if (mc != null && mf != null && colliderMesh != null) mc.sharedMesh = colliderMesh;
