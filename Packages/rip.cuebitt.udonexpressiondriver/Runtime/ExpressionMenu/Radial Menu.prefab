@@ -99,8 +99,6 @@ MonoBehaviour:
   innerRadius: 0.1
   outerRadius: 0.3
   radialSteps: 16
-  outlineThickness: 0.01
-  outlineHeightOffset: 0.001
   labelOffset: 0.01
   labels: []
   icons: []

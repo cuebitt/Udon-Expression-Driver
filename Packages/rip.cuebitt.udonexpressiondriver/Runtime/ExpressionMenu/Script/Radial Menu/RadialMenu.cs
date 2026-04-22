@@ -1,3 +1,4 @@
+using System;
 using TMPro;
 using UdonSharp;
 using UnityEngine;
@@ -56,6 +57,25 @@ namespace UdonExpressionDriver
         {
             EditorApplication.delayCall += _SetupSegments;
         }
+
+        private void OnDestroy()
+        {
+            if (Application.isPlaying) return;
+
+            foreach (var segment in segments)
+            {
+                var mh = segment.transform.Find("Mesh Holder");
+                var mf = mh.GetComponent<MeshFilter>();
+
+                if (mf != null)
+                {
+                    var mesh = mf.sharedMesh;
+                    if(!mesh) continue;
+                    
+                    DestroyImmediate(mesh);
+                }
+            }
+        }
 #endif
 
         public void OnButtonPress(int index)
@@ -98,6 +118,11 @@ namespace UdonExpressionDriver
                 if (mf != null)
                 {
                     colliderMesh = CreateWedgeMesh(angleStep, innerRadius, outerRadius, radialSteps);
+                    
+#if !COMPILER_UDONSHARP && UNITY_EDITOR
+                    colliderMesh.hideFlags = HideFlags.DontSave;
+#endif
+                    
                     mf.sharedMesh = colliderMesh;
                 }
                     
