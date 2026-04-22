@@ -24,12 +24,17 @@ namespace UdonExpressionDriver
         private const float DefaultLabelScale = 0.25f;
         private const float DefaultLabelZOffset = 0.2f;
         private const int MaxSegmentArraySize = 8;
+        private const string MeshHolderName = "Mesh Holder";
+        private const string LabelName = "Label";
+        private const string TextName = "Text";
+        private const string IconName = "Icon";
 
         [Header("Circle Segment Generator Settings")]
         [Range(1, 8)] [SerializeField] private int segmentCount = 8;
         [SerializeField] private float innerRadius = DefaultInnerRadius;
         [SerializeField] private float outerRadius = DefaultOuterRadius;
         [SerializeField] private int radialSteps = DefaultRadialSteps;
+        [Tooltip("Number of subdivisions along the arc across the whole circle.")]
         [SerializeField] private float labelOffset = DefaultLabelHeightOffset;
         [SerializeField] private float borderThickness = 0.005f;
         
@@ -48,10 +53,12 @@ namespace UdonExpressionDriver
         [SerializeField] private Transform borderMeshHolder;
 
         private readonly int _mainTexShaderProperty = Shader.PropertyToID("_MainTex");
+        private Material[] _gradientMaterialArray;
 
         private void Start()
         {
             if (segments == null || segments.Length == 0) return;
+            _gradientMaterialArray = new[] { gradientMaterial };
             _SetupSegments();
             _SetupLabelsAndIcons();
         }
@@ -69,7 +76,7 @@ namespace UdonExpressionDriver
             foreach (var segment in segments)
             {
                 if (!segment) continue;
-                var mh = segment.transform.Find("Mesh Holder");
+                var mh = segment.transform.Find(MeshHolderName);
                 if (!mh) continue;
                 var mf = mh.GetComponent<MeshFilter>();
 
@@ -107,9 +114,40 @@ namespace UdonExpressionDriver
         public void _SetupSegments()
         {
             if (segments == null || gradientMaterial == null) return;
+            if (_gradientMaterialArray == null) _gradientMaterialArray = new[] { gradientMaterial };
+            if (borderMeshHolder == null || borderThickness <= 0f)
+            {
+                _SetupSegmentsNoBorders();
+                return;
+            }
 
+            _SetupSegmentsNoBorders();
+
+            var borders = CreateBorderMesh(segmentCount, innerRadius, outerRadius);
+            var bmf = borderMeshHolder.GetComponent<MeshFilter>();
+            if (borders == null)
+            {
+                if (bmf != null) bmf.sharedMesh = null;
+                return;
+            }
+            
+            if (bmf != null)
+            {
+#if !COMPILER_UDONSHARP && UNITY_EDITOR
+                borders.hideFlags = HideFlags.DontSave;
+#endif
+                bmf.sharedMesh = borders;
+            }
+
+            var bmr = borderMeshHolder.GetComponent<MeshRenderer>();
+            if (bmr != null) bmr.sharedMaterials = _gradientMaterialArray;
+        }
+
+        private void _SetupSegmentsNoBorders()
+        {
             var angleStep = 360f / segmentCount;
             var startAngle = angleStep / 2f;
+            var stepsPerWedge = Mathf.Max(1, radialSteps / segmentCount);
 
             for (var i = 0; i < segments.Length; i++)
             {
@@ -120,7 +158,7 @@ namespace UdonExpressionDriver
                 seg.SetActive(active);
                 if (!active) continue;
 
-                var meshHolder = seg.transform.Find("Mesh Holder");
+                var meshHolder = seg.transform.Find(MeshHolderName);
                 if (meshHolder == null) continue;
 
                 meshHolder.localRotation = Quaternion.Euler(0f, angleStep * i - startAngle, 0f);
@@ -132,7 +170,7 @@ namespace UdonExpressionDriver
                 Mesh colliderMesh = null;
                 if (mf != null)
                 {
-                    colliderMesh = CreateWedgeMesh(angleStep, innerRadius, outerRadius, radialSteps);
+                    colliderMesh = CreateWedgeMesh(angleStep, innerRadius, outerRadius, stepsPerWedge);
                     
 #if !COMPILER_UDONSHARP && UNITY_EDITOR
                     colliderMesh.hideFlags = HideFlags.DontSave;
@@ -143,29 +181,10 @@ namespace UdonExpressionDriver
                     
 
                 var mr = meshHolder.GetComponent<MeshRenderer>();
-                if (mr != null) mr.sharedMaterials = new[] { gradientMaterial };
+                if (mr != null) mr.sharedMaterials = _gradientMaterialArray;
 
                 var mc = meshHolder.GetComponent<MeshCollider>();
                 if (mc != null && mf != null && colliderMesh != null) mc.sharedMesh = colliderMesh;
-            }
-
-            if (borderMeshHolder != null && borderThickness > 0f)
-            {
-                var borders = CreateBorderMesh(segmentCount, innerRadius, outerRadius);
-                if (borders != null)
-                {
-                    var bmf = borderMeshHolder.GetComponent<MeshFilter>();
-                    if (bmf != null)
-                    {
-#if !COMPILER_UDONSHARP && UNITY_EDITOR
-                        borders.hideFlags = HideFlags.DontSave;
-#endif
-                        bmf.sharedMesh = borders;
-                    }
-
-                    var bmr = borderMeshHolder.GetComponent<MeshRenderer>();
-                    if (bmr != null) bmr.sharedMaterials = new[] { gradientMaterial };
-                }
             }
         }
 
@@ -182,10 +201,10 @@ namespace UdonExpressionDriver
                 var seg = segments[i];
                 if (!seg) continue;
 
-                var label = seg.transform.Find("Label");
+                var label = seg.transform.Find(LabelName);
                 if (!label) continue;
 
-                var text = label.Find("Text");
+                var text = label.Find(TextName);
                 if (text && hasLabels && i < labels.Length && !string.IsNullOrEmpty(labels[i]))
                 {
                     var tmpText = text.gameObject.GetComponent<TMP_Text>();
@@ -200,7 +219,7 @@ namespace UdonExpressionDriver
                     text.gameObject.SetActive(false);
                 }
 
-                var icon = label.Find("Icon");
+                var icon = label.Find(IconName);
                 if (icon && hasIcons && i < icons.Length && icons[i] != null)
                 {
                     var iconMr = icon.GetComponent<MeshRenderer>();
@@ -302,14 +321,16 @@ namespace UdonExpressionDriver
 
             for (var i = 0; i < segCount; i++)
             {
-                var boundaryAngle = Mathf.Deg2Rad * (angleStep * i - startAngle);
-                var tangent = new Vector3(Mathf.Cos(boundaryAngle), 0f, -Mathf.Sin(boundaryAngle));
+                var boundaryAngleRad = Mathf.Deg2Rad * (angleStep * i - startAngle);
+                var dir = new Vector3(Mathf.Sin(boundaryAngleRad), 0f, Mathf.Cos(boundaryAngleRad));
+                var tangent = new Vector3(Mathf.Cos(boundaryAngleRad), 0f, -Mathf.Sin(boundaryAngleRad));
+                var thicknessOffset = tangent * borderThickness;
 
                 var vi = i * 4;
-                verts[vi] = new Vector3(Mathf.Sin(boundaryAngle), 0f, Mathf.Cos(boundaryAngle)) * innerR + tangent * borderThickness;
-                verts[vi + 1] = new Vector3(Mathf.Sin(boundaryAngle), 0f, Mathf.Cos(boundaryAngle)) * outerR + tangent * borderThickness;
-                verts[vi + 2] = new Vector3(Mathf.Sin(boundaryAngle), 0f, Mathf.Cos(boundaryAngle)) * innerR - tangent * borderThickness;
-                verts[vi + 3] = new Vector3(Mathf.Sin(boundaryAngle), 0f, Mathf.Cos(boundaryAngle)) * outerR - tangent * borderThickness;
+                verts[vi] = dir * innerR + thicknessOffset;
+                verts[vi + 1] = dir * outerR + thicknessOffset;
+                verts[vi + 2] = dir * innerR - thicknessOffset;
+                verts[vi + 3] = dir * outerR - thicknessOffset;
 
                 uvs[vi] = new Vector2(0f, 0f);
                 uvs[vi + 1] = new Vector2(0f, 0f);
