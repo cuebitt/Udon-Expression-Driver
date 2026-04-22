@@ -1,10 +1,11 @@
-using System;
 using TMPro;
 using UdonSharp;
 using UnityEngine;
 
 #if !COMPILER_UDONSHARP && UNITY_EDITOR
 using UnityEditor;
+// ReSharper disable MergeIntoPattern
+// ReSharper disable MemberCanBePrivate.Global
 #endif
 
 namespace UdonExpressionDriver
@@ -96,8 +97,7 @@ namespace UdonExpressionDriver
         public void OnButtonPress(int index)
         {
         }
-
-        // ReSharper disable once MemberCanBePrivate.Global
+        
         /// <summary>
         /// Configures all wedge segments in the radial menu:
         /// - Activates or deactivates each segment based on <see cref="segmentCount" />.
@@ -185,8 +185,6 @@ namespace UdonExpressionDriver
                 var label = seg.transform.Find("Label");
                 if (!label) continue;
 
-                var labelActive = false;
-
                 var text = label.Find("Text");
                 if (text && hasLabels && i < labels.Length && !string.IsNullOrEmpty(labels[i]))
                 {
@@ -195,7 +193,6 @@ namespace UdonExpressionDriver
                     {
                         tmpText.text = labels[i];
                         text.gameObject.SetActive(true);
-                        labelActive = true;
                     }
                 }
                 else if (text)
@@ -215,7 +212,6 @@ namespace UdonExpressionDriver
                         iconMr.SetPropertyBlock(block);
 
                         icon.gameObject.SetActive(true);
-                        labelActive = true;
                     }
                 }
                 else if (icon)
@@ -244,8 +240,6 @@ namespace UdonExpressionDriver
         /// <param name="innerR">Inner radius of the wedge.</param>
         /// <param name="outerR">Outer radius of the wedge.</param>
         /// <param name="steps">Number of subdivisions along the arc.</param>
-        /// <param name="outlineThickness">Width of the outline along the edges in world units.</param>
-        /// <param name="_outlineHeightOffset">Height of the outline mesh (prevents z-fighting)</param>
         /// <returns>A Mesh containing the wedge and its radial outline.</returns>
         private static Mesh CreateWedgeMesh(float angleDeg, float innerR, float outerR, int steps)
         {
@@ -340,29 +334,5 @@ namespace UdonExpressionDriver
 
             return borderMesh;
         }
-
-        /// <summary>
-        ///     Merges two meshes into a single mesh. Vertex and triangle indices of the second mesh
-        ///     are offset to follow the first mesh. UVs and normals are preserved.
-        /// </summary>
-        /// <param name="a">The first mesh.</param>
-        /// <param name="b">The second mesh to merge on top of the first.</param>
-        /// <returns>A new Mesh combining both input meshes.</returns>
-        private static Mesh MergeMeshes(Mesh a, Mesh b)
-        {
-            var combine = new CombineInstance[2];
-            
-            combine[0].mesh = a;
-            combine[1].mesh = b;
-
-            var m = new Mesh();
-            m.CombineMeshes(combine);
-            
-            m.RecalculateNormals();
-            m.RecalculateBounds();
-
-            return m;
-        }
-        
     }
 }
