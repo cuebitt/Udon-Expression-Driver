@@ -100,6 +100,7 @@ MonoBehaviour:
   outerRadius: 0.3
   radialSteps: 16
   labelOffset: 0.01
+  borderThickness: 0.005
   labels: []
   icons: []
   segments:
@@ -112,6 +113,7 @@ MonoBehaviour:
   - {fileID: 6015885320696148338}
   - {fileID: 4898107782531793001}
   gradientMaterial: {fileID: 2100000, guid: 7aa33669df57c3f419003c515c7d8870, type: 2}
+  borderMeshHolder: {fileID: 0}
 --- !u!114 &1921552578177886860
 MonoBehaviour:
   m_ObjectHideFlags: 0

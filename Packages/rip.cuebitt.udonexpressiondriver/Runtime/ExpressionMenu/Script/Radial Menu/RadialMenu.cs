@@ -30,6 +30,7 @@ namespace UdonExpressionDriver
         [SerializeField] private float outerRadius = DefaultOuterRadius;
         [SerializeField] private int radialSteps = DefaultRadialSteps;
         [SerializeField] private float labelOffset = DefaultLabelHeightOffset;
+        [SerializeField] private float borderThickness = 0.005f;
         
         [Header("Content")]
         [Tooltip("Text labels for each segment. Leave empty to hide the label.")]
@@ -42,6 +43,8 @@ namespace UdonExpressionDriver
         [SerializeField] private GameObject[] segments = new GameObject[MaxSegmentArraySize];
         [Tooltip("Material with gradient shader for segment fill.")]
         [SerializeField] private Material gradientMaterial;
+        [Tooltip("Mesh Holder for the merged border mesh.")]
+        [SerializeField] private Transform borderMeshHolder;
 
         private readonly int _mainTexShaderProperty = Shader.PropertyToID("_MainTex");
 
@@ -64,7 +67,9 @@ namespace UdonExpressionDriver
 
             foreach (var segment in segments)
             {
+                if (!segment) continue;
                 var mh = segment.transform.Find("Mesh Holder");
+                if (!mh) continue;
                 var mf = mh.GetComponent<MeshFilter>();
 
                 if (mf != null)
@@ -73,6 +78,16 @@ namespace UdonExpressionDriver
                     if(!mesh) continue;
                     
                     DestroyImmediate(mesh);
+                }
+            }
+
+            if (borderMeshHolder != null)
+            {
+                var bmf = borderMeshHolder.GetComponent<MeshFilter>();
+                if (bmf != null)
+                {
+                    var mesh = bmf.sharedMesh;
+                    if (mesh) DestroyImmediate(mesh);
                 }
             }
         }
@@ -132,6 +147,25 @@ namespace UdonExpressionDriver
 
                 var mc = meshHolder.GetComponent<MeshCollider>();
                 if (mc != null && mf != null && colliderMesh != null) mc.sharedMesh = colliderMesh;
+            }
+
+            if (borderMeshHolder != null && borderThickness > 0f)
+            {
+                var borders = CreateBorderMesh(segmentCount, innerRadius, outerRadius);
+                if (borders != null)
+                {
+                    var bmf = borderMeshHolder.GetComponent<MeshFilter>();
+                    if (bmf != null)
+                    {
+#if !COMPILER_UDONSHARP && UNITY_EDITOR
+                        borders.hideFlags = HideFlags.DontSave;
+#endif
+                        bmf.sharedMesh = borders;
+                    }
+
+                    var bmr = borderMeshHolder.GetComponent<MeshRenderer>();
+                    if (bmr != null) bmr.sharedMaterials = new[] { gradientMaterial };
+                }
             }
         }
 
@@ -258,6 +292,53 @@ namespace UdonExpressionDriver
             wedgeMesh.RecalculateBounds();
 
             return wedgeMesh;
+        }
+        
+        private Mesh CreateBorderMesh(int segCount, float innerR, float outerR)
+        {
+            if (segCount < 2 || borderThickness <= 0f) return null;
+
+            var borderMesh = new Mesh();
+            var angleStep = 360f / segCount;
+            var startAngle = angleStep / 2f;
+
+            var verts = new Vector3[segCount * 4];
+            var uvs = new Vector2[verts.Length];
+            var tris = new int[segCount * 6];
+
+            for (var i = 0; i < segCount; i++)
+            {
+                var boundaryAngle = Mathf.Deg2Rad * (angleStep * i - startAngle);
+                var tangent = new Vector3(Mathf.Cos(boundaryAngle), 0f, -Mathf.Sin(boundaryAngle));
+
+                var vi = i * 4;
+                verts[vi] = new Vector3(Mathf.Sin(boundaryAngle), 0f, Mathf.Cos(boundaryAngle)) * innerR + tangent * borderThickness;
+                verts[vi + 1] = new Vector3(Mathf.Sin(boundaryAngle), 0f, Mathf.Cos(boundaryAngle)) * outerR + tangent * borderThickness;
+                verts[vi + 2] = new Vector3(Mathf.Sin(boundaryAngle), 0f, Mathf.Cos(boundaryAngle)) * innerR - tangent * borderThickness;
+                verts[vi + 3] = new Vector3(Mathf.Sin(boundaryAngle), 0f, Mathf.Cos(boundaryAngle)) * outerR - tangent * borderThickness;
+
+                uvs[vi] = new Vector2(0f, 0f);
+                uvs[vi + 1] = new Vector2(0f, 0f);
+                uvs[vi + 2] = new Vector2(0f, 0f);
+                uvs[vi + 3] = new Vector2(0f, 0f);
+
+                var ti = i * 6;
+                tris[ti] = vi;
+                tris[ti + 1] = vi + 2;
+                tris[ti + 2] = vi + 1;
+
+                tris[ti + 3] = vi + 2;
+                tris[ti + 4] = vi + 3;
+                tris[ti + 5] = vi + 1;
+            }
+
+            borderMesh.vertices = verts;
+            borderMesh.uv = uvs;
+            borderMesh.triangles = tris;
+            borderMesh.RecalculateNormals();
+            borderMesh.RecalculateBounds();
+
+            return borderMesh;
         }
 
         /// <summary>
