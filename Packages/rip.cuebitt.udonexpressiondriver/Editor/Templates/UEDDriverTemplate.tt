@@ -7,7 +7,7 @@ using UdonSharp;
 using UnityEngine;
 using VRC.SDK3.UdonNetworkCalling;
 using VRC.SDK3.Data;
-using UdonExpressionDriver.Runtime;
+using UdonExpressionDriver;
 
 public class <#= ClassName #> : UEDBehaviour {
     // Animator controller

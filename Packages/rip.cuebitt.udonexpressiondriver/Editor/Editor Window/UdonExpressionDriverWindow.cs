@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using UdonExpressionDriver.Editor.Templates;
 using UdonSharp;
 using UnityEditor;
@@ -110,7 +111,7 @@ namespace UdonExpressionDriver.Editor
                     return;
                 }
 
-                ExtractParameters(_data.extractorMenu, _data.extractorParameters, _data.extractorOutputPath);
+                SerializeMenu(_data.extractorMenu, _data.extractorParameters, _data.extractorOutputPath);
             };
 
             root.Q<Button>("driver-generator-input-browse-btn").clicked += () =>
@@ -209,34 +210,37 @@ namespace UdonExpressionDriver.Editor
             return (packageInfo.displayName, $"v{packageInfo.version}", packageInfo.author.name);
         }
 
-        private static void ExtractParameters(VRCExpressionsMenu menu, VRCExpressionParameters parameters,
+        private static void SerializeMenu(VRCExpressionsMenu menu, VRCExpressionParameters parameters,
             string outputPath)
         {
             Debug.Log("[Udon Expression Driver] Creating JSON...");
-            var export = new Dictionary<string, object>
-            {
-                { "parameters", parameters.parameters },
-                { "controls", menu.controls }
-            };
-            var json = UEDSerializer.Serialize(export);
+
+            var flattenedMenu = VRCMenuFlattener.FlattenMenu(menu, parameters);
 
             Debug.Log("[Udon Expression Driver] Writing JSON...");
-            File.WriteAllText(outputPath, json);
+            File.WriteAllText(outputPath, flattenedMenu.ToString());
         }
 
         private static void GenerateDriverBehaviour(string inputPath, string outputPath, string className)
         {
             Debug.Log("[Udon Expression Driver] Generating UdonSharpBehaviour from template...");
 
-            var json = UEDSerializer.Deserialize<UdonExpressionDriverJson>(
-                File.ReadAllText(inputPath));
+            var jObject = JObject.Parse(File.ReadAllText(inputPath));
             var validClassName = UdonExpressionDriverUtils.ToValidClassName(className);
-
+            
+            // Get the "parameters" JArray
+            var parameters = new List<VRCExpressionParameters.Parameter>();
+            
+            var paramArray = jObject["parameters"] as JArray;
+            if (paramArray != null || paramArray.Count != 0)
+            {
+                parameters = paramArray.ToObject<List<VRCExpressionParameters.Parameter>>();
+            }
 
             var template = new UEDDriverTemplate
             {
                 ClassName = className,
-                Parameters = json.Parameters,
+                Parameters = parameters,
             };
 
             var result = template.TransformText();

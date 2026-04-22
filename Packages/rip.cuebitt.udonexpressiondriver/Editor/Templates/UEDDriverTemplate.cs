@@ -26,7 +26,7 @@ namespace UdonExpressionDriver.Editor.Templates
         /// </summary>
         public virtual string TransformText()
         {
-            this.Write("using UdonSharp;\r\nusing UnityEngine;\r\nusing VRC.SDK3.UdonNetworkCalling;\r\nusing VRC.SDK3.Data;\r\nusing UdonExpressionDriver.Runtime;\r\n\r\npublic class ");
+            this.Write("using UdonSharp;\r\nusing UnityEngine;\r\nusing VRC.SDK3.UdonNetworkCalling;\r\nusing VRC.SDK3.Data;\r\nusing UdonExpressionDriver;\r\n\r\npublic class ");
             
             this.Write(this.ToStringHelper.ToStringWithCulture(ClassName));
             
