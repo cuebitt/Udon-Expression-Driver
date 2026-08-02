@@ -16,17 +16,17 @@
       "dependencies": {}
     },
     "com.vrchat.worlds": {
-      "version": "3.10.3",
+      "version": "3.10.4",
       "dependencies": {
-        "com.vrchat.base": "3.10.3"
+        "com.vrchat.base": "3.10.4"
       }
     },
     "com.vrchat.base": {
-      "version": "3.10.3",
+      "version": "3.10.4",
       "dependencies": {}
     },
     "com.vrcfury.vrcfury": {
-      "version": "1.1301.0",
+      "version": "1.1407.0",
       "dependencies": {}
     }
   }
