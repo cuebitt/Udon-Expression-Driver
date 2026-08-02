@@ -144,3 +144,9 @@ Assets/TextMesh*Pro
 Assets/TextMesh*Pro.meta
 
 UIElementsSchema
+
+AGENTS.md
+skills-lock.json
+
+# VRChat ClientSim generated save data
+ClientSimStorage/

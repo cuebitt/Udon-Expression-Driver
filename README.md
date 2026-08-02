@@ -14,18 +14,19 @@
 </div>
 <br>
 
-Udon Expression Driver is a set of tools and runtime scripts used to non-destructively port VRChat avatar props with Dynamics (Physbones and Contacts[^1]) to Worlds.
+Udon Expression Driver is a set of tools and runtime scripts used to non-destructively port VRChat avatar props with Dynamics (Physbones and Contacts[^1]) to Worlds. It adds VRCFury-style Armature Links (props that stick to a player's selected humanoid bone) and world-space emulated expressions menus, with fully functional PhysBones and Contacts.
 
 ## Features
 
 - [x] Automatic installer
-- [x] `VRCExpressionsMenu` + `VRCExpressionParameter` -> JSON extractor
-- [x] JSON -> Driver UdonSharpBehaviour
-  - [ ] Custom inspector for behaviour class
-- [ ] Avatars-like menu prefab generator
+- [ ] Component-driven setup (`UEDArmatureLink` positioning + `UEDFullController` expressions/menu) — in progress
+- [ ] World Armature Link: stick a prop to a player's humanoid bone at runtime
+- [ ] Emulated expressions menu (radial menu) driven from the prop's own data
 - [ ] Physbone/Contact event forwarder tool
   - [ ] Runtime Physbone event forwarder script
   - [ ] Runtime Contact event forwarder script
+
+> The original JSON extractor → generated-driver-script pipeline was removed in the v2 cleanup.
 
 ## Usage
 
@@ -37,7 +38,7 @@ Udon Expression Driver is a set of tools and runtime scripts used to non-destruc
 
 Add [my VPM repository](https://cuebitt.github.io/vpm/) to VCC/ALCOM and install the `UdonExpressionDriver` package to your World project.
 
-Detailed steps will be included here once more of the above features are implemented. You can find the work-in-progress editor menu by selecting Tools > Udon Expression Driver.
+Detailed steps will be included here once more of the above features are implemented. Setup is component-driven: add the UED components to a prop prefab and drop it in your scene.
 
 ## Troubleshooting
 

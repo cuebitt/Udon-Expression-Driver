@@ -1,14 +1,14 @@
 {
   "name": "rip.cuebitt.udonexpressiondriver",
   "displayName": "Udon Expression Driver",
-  "version": "0.0.4",
+  "version": "0.1.0",
   "author": {
     "name": "Cuebitt",
     "email": "contact@cuebitt.rip",
     "url": "https://github.com/cuebitt"
   },
   "unity": "2022.3",
-  "description": "Udon Expression Driver (UED) is a set of tools and runtime scripts used to port Avatars props to Worlds projects.",
+  "description": "Udon Expression Driver (UED) adds VRCFury-style Armature Links and emulated expressions menus to props in VRChat World projects, with fully functional PhysBones and Contacts.",
   "vpmDependencies": {
     "com.vrchat.base": "3.x.x",
     "com.vrchat.worlds": "3.x.x",
