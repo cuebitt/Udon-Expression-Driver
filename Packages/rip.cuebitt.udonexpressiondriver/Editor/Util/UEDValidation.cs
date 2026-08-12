@@ -81,6 +81,30 @@ namespace UdonExpressionDriver.Editor
                 }
             }
 
+            var subParamStart = serialized.FindProperty("controlSubParamStart");
+            if (subParamStart != null && controlCount > 0)
+            {
+                if (subParamStart.arraySize != controlCount)
+                {
+                    errors++;
+                    Debug.LogError($"[UED] '{controller.name}': controlSubParamStart length ({subParamStart.arraySize}) doesn't match control count ({controlCount}).", controller);
+                }
+                else
+                {
+                    var subParams = serialized.FindProperty("controlSubParams");
+                    for (var i = 0; i < controlCount; i++)
+                    {
+                        var start = subParamStart.GetArrayElementAtIndex(i).intValue;
+                        if (start == -1) continue;
+                        if (start < 0 || subParams == null || start >= subParams.arraySize)
+                        {
+                            errors++;
+                            Debug.LogError($"[UED] '{controller.name}': control {i} sub-parameter start {start} out of range.", controller);
+                        }
+                    }
+                }
+            }
+
             if (controlCount > 0)
             {
                 var submenu = serialized.FindProperty("controlSubmenuIndex");

@@ -844,9 +844,7 @@ MonoBehaviour:
   _udonSharpBackingUdonBehaviour: {fileID: 1832376702219770213}
   value: 0
   label: Radial Puppet
-  eventHandlerBehaviour: {fileID: 0}
-  valueChangedEventName: 
-  headerClickedEventName: 
+  handler: {fileID: 0}
   radialSlider: {fileID: 7013897545616012927}
   lowerSlider: {fileID: 8056810050761309506}
   headerLabel: {fileID: 4869620271147210139}

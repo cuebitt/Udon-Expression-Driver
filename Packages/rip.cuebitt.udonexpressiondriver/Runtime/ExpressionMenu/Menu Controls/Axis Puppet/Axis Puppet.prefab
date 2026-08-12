@@ -1868,10 +1868,7 @@ MonoBehaviour:
   - -Y
   - +Y
   puppetValue: {x: 0.5, y: 0.5}
-  eventHandlerBehaviour: {fileID: 0}
-  twoAxisEventName: 
-  fourAxisEventName: 
-  headerClickedEventName: 
+  handler: {fileID: 0}
   headerLabel: {fileID: 7404969387642812158}
   xAxisSlider: {fileID: 2713760840891362990}
   yAxisSlider: {fileID: 3254734867552793686}

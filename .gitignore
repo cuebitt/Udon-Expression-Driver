@@ -156,6 +156,10 @@ Assets/Nebula Animations.meta
 Assets/UEDTest/
 Assets/UEDTest.meta
 
+# Transient rewritten animator controllers generated at play/build
+Assets/UEDGenerated/
+Assets/UEDGenerated.meta
+
 AGENTS.md
 skills-lock.json
 

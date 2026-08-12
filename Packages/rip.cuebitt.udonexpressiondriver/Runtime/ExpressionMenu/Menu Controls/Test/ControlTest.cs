@@ -1,12 +1,11 @@
 ﻿using TMPro;
 using UdonSharp;
 using UnityEngine;
-using VRC.SDK3.UdonNetworkCalling;
 
 namespace UdonExpressionDriver
 {
     [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
-    public class ControlTest : UdonSharpBehaviour
+    public class ControlTest : UEDPuppetHandler
     {
         [Header("Internal")]
         [SerializeField] private TMP_Text radialPuppetValue;
@@ -17,26 +16,27 @@ namespace UdonExpressionDriver
         [SerializeField] private TMP_Text fourAxisNegY;
         [SerializeField] private TMP_Text fourAxisPosY;
 
-        [NetworkCallable]
-        public void OnRadialPuppetValueChanged(float value)
+        public override void _OnPuppetRadial(float value)
         {
-            radialPuppetValue.text = $"{value * 100:F0}%";
+            if (radialPuppetValue != null) radialPuppetValue.text = $"{value * 100:F0}%";
         }
 
-        [NetworkCallable]
-        public void OnTwoAxisValueChanged(float xValue, float yValue)
+        public override void _OnPuppetTwo(float x, float y)
         {
-            twoAxisX.text = xValue.ToString("F2");
-            twoAxisY.text = yValue.ToString("F2");
+            if (twoAxisX != null) twoAxisX.text = x.ToString("F2");
+            if (twoAxisY != null) twoAxisY.text = y.ToString("F2");
         }
 
-        [NetworkCallable]
-        public void OnFourAxisValueChanged(float negXValue, float posXValue, float negYValue, float posYValue)
+        public override void _OnPuppetFour(float negX, float posX, float negY, float posY)
         {
-            fourAxisNegX.text = negXValue.ToString("F2");
-            fourAxisPosX.text = posXValue.ToString("F2");
-            fourAxisNegY.text = negYValue.ToString("F2");
-            fourAxisPosY.text = posYValue.ToString("F2");
+            if (fourAxisNegX != null) fourAxisNegX.text = negX.ToString("F2");
+            if (fourAxisPosX != null) fourAxisPosX.text = posX.ToString("F2");
+            if (fourAxisNegY != null) fourAxisNegY.text = negY.ToString("F2");
+            if (fourAxisPosY != null) fourAxisPosY.text = posY.ToString("F2");
+        }
+
+        public override void _OnPuppetClose()
+        {
         }
     }
 }

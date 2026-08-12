@@ -20,7 +20,10 @@ namespace UdonExpressionDriver
         private const int ControlButton = 0;
         private const int ControlToggle = 1;
         private const int ControlSubMenu = 2;
+        private const int ControlTwoAxis = 3;
+        private const int ControlFourAxis = 4;
         private const int ControlBack = 5;
+        private const int ControlRadialPuppet = 6;
 
         private const int MaxMenuStackDepth = 8;
         private const int MaxMenuControls = 8;
@@ -53,15 +56,28 @@ namespace UdonExpressionDriver
         [SerializeField] private float[] controlValues;
         [Tooltip("Submenu index for submenu controls, -1 for none.")]
         [SerializeField] private int[] controlSubmenuIndex;
+        [Tooltip("Start index into controlSubParams for each control's puppet sub-parameters, -1 for non-puppets.")]
+        [SerializeField] private int[] controlSubParamStart;
+        [Tooltip("Puppet sub-parameter parameter indices (flat), in the order the puppet emits them.")]
+        [SerializeField] private int[] controlSubParams;
 
         [Tooltip("Radial menu view to populate from this controller's current menu level.")]
         [SerializeField] private RadialMenu menuView;
         [Tooltip("Whether interacting with this prop toggles the menu visibility.")]
         [SerializeField] private bool interactTogglesMenu = true;
 
+        [Header("Puppets")]
+        [Tooltip("World-space radial puppet control shown when a radial puppet menu item is opened.")]
+        [SerializeField] private GameObject radialPuppet;
+        [Tooltip("World-space axis puppet control shown when a two- or four-axis puppet menu item is opened.")]
+        [SerializeField] private GameObject axisPuppet;
+
         [SerializeField, HideInInspector] private RuntimeAnimatorController importedAnimatorController;
         [SerializeField, HideInInspector] private string importedMenuGuid;
         [SerializeField, HideInInspector] private string importedParametersGuid;
+        [SerializeField, HideInInspector] private string generatedControllerGuid;
+        [SerializeField, HideInInspector] private string generatedSourceGuid;
+        [SerializeField, HideInInspector] private bool autoAddedAnimator;
 
         [UdonSynced] private float[] _syncedValues = new float[0];
         private float[] _localValues = new float[0];
@@ -72,6 +88,7 @@ namespace UdonExpressionDriver
         private int _currentMenu;
         private int[] _menuStack = new int[MaxMenuStackDepth];
         private int _menuStackDepth;
+        private int _activePuppetFlat = -1;
 
         private void Start()
         {
@@ -118,6 +135,9 @@ namespace UdonExpressionDriver
 
             _ApplyAllToAnimator();
             _RefreshMenuView();
+
+            if (radialPuppet != null) radialPuppet.SetActive(false);
+            if (axisPuppet != null) axisPuppet.SetActive(false);
         }
 
         public override void OnDeserialization()
@@ -282,13 +302,41 @@ namespace UdonExpressionDriver
         public void _SetMenuVisible(bool visible)
         {
             if (menuView == null) return;
+            if (visible) _PlaceMenuView();
             menuView._SetVisible(visible);
         }
 
         public void _ToggleMenu()
         {
+            if (_activePuppetFlat >= 0)
+            {
+                _OnPuppetClose();
+                return;
+            }
+
             if (menuView == null) return;
+            if (!menuView.gameObject.activeSelf) _PlaceMenuView();
             menuView._ToggleVisible();
+        }
+
+        /// <summary>
+        /// Moves the radial menu in front of the player's head (like the puppet controls) so it is
+        /// immediately visible instead of sitting at the prop's origin. The menu reads from its -Z
+        /// side, so that face is turned toward the player. Does nothing when there is no local
+        /// player yet.
+        /// </summary>
+        private void _PlaceMenuView()
+        {
+            if (menuView == null) return;
+            var player = Networking.LocalPlayer;
+            if (player == null) return;
+
+            var head = player.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
+            var pos = head.position + head.rotation * Vector3.forward * 1.0f;
+            pos.y -= 0.5f;
+
+            menuView.transform.position = pos;
+            menuView.transform.rotation = Quaternion.LookRotation(pos - head.position, Vector3.up);
         }
 
         public override void Interact()
@@ -334,6 +382,134 @@ namespace UdonExpressionDriver
             {
                 _Back();
             }
+            else if (type == ControlTwoAxis || type == ControlFourAxis || type == ControlRadialPuppet)
+            {
+                _OpenPuppet(flat);
+            }
+        }
+
+        /// <summary>
+        /// Opens the world-space puppet control for the given control and hides the menu.
+        /// The puppet writes into this controller's params via the typed handler callbacks.
+        /// </summary>
+        private void _OpenPuppet(int flat)
+        {
+            var type = controlTypes != null && flat < controlTypes.Length ? controlTypes[flat] : -1;
+            var puppet = type == ControlRadialPuppet ? radialPuppet : (type == ControlTwoAxis || type == ControlFourAxis ? axisPuppet : null);
+            if (puppet == null) return;
+
+            _activePuppetFlat = flat;
+            _SetMenuVisible(false);
+
+            if (radialPuppet != null) radialPuppet.SetActive(puppet == radialPuppet);
+            if (axisPuppet != null) axisPuppet.SetActive(puppet == axisPuppet);
+
+            var name = controlNames != null && flat < controlNames.Length ? controlNames[flat] : "";
+
+            if (type == ControlRadialPuppet)
+            {
+                var radial = puppet.GetComponent<RadialPuppet>();
+                if (radial != null)
+                {
+                    radial.Label = name;
+                    var p0 = _PuppetSubParam(flat, 0);
+                    if (p0 >= 0) radial.Value = _GetParam(p0);
+                }
+            }
+            else
+            {
+                var axis = puppet.GetComponent<AxisPuppet>();
+                if (axis != null)
+                {
+                    axis.Label = name;
+                    axis.AxisPuppetType = type == ControlTwoAxis ? AxisPuppetType.Two : AxisPuppetType.Four;
+
+                    if (type == ControlTwoAxis)
+                    {
+                        var px = _PuppetSubParam(flat, 0);
+                        var py = _PuppetSubParam(flat, 1);
+                        if (px >= 0 && py >= 0)
+                            axis.PuppetValue = new Vector2((_GetParam(px) + 1f) * 0.5f, (_GetParam(py) + 1f) * 0.5f);
+                    }
+                    else
+                    {
+                        axis.PuppetValue = new Vector2(0.5f, 0.5f);
+                    }
+                }
+            }
+
+            var player = Networking.LocalPlayer;
+            if (player != null)
+            {
+                var head = player.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
+                var pos = head.position + head.rotation * Vector3.forward * 0.8f;
+                pos.y -= 0.4f;
+                puppet.transform.position = pos;
+                // World-space UI reads from its -Z face, so point +Z away from the user's head.
+                puppet.transform.rotation = Quaternion.LookRotation(pos - head.position, Vector3.up);
+            }
+        }
+
+        public override void _OnPuppetRadial(float value)
+        {
+            _WritePuppetSubParam(0, value);
+        }
+
+        public override void _OnPuppetTwo(float x, float y)
+        {
+            _WritePuppetSubParam(0, x);
+            _WritePuppetSubParam(1, y);
+        }
+
+        public override void _OnPuppetFour(float negX, float posX, float negY, float posY)
+        {
+            _WritePuppetSubParam(0, negX);
+            _WritePuppetSubParam(1, posX);
+            _WritePuppetSubParam(2, negY);
+            _WritePuppetSubParam(3, posY);
+        }
+
+        public override void _OnPuppetClose()
+        {
+            _activePuppetFlat = -1;
+            if (radialPuppet != null) radialPuppet.SetActive(false);
+            if (axisPuppet != null) axisPuppet.SetActive(false);
+            _SetMenuVisible(true);
+        }
+
+        private void _WritePuppetSubParam(int index, float value)
+        {
+            var flat = _activePuppetFlat;
+            if (flat < 0 || controlSubParamStart == null || controlSubParams == null) return;
+            if (flat >= controlSubParamStart.Length) return;
+            if (index >= _PuppetSubParamCount(flat)) return;
+
+            var start = controlSubParamStart[flat];
+            if (start < 0 || start + index >= controlSubParams.Length) return;
+
+            var param = controlSubParams[start + index];
+            if (param >= 0) _SetParam(param, value);
+        }
+
+        private int _PuppetSubParam(int flat, int index)
+        {
+            if (flat < 0 || controlSubParamStart == null || controlSubParams == null) return -1;
+            if (flat >= controlSubParamStart.Length) return -1;
+            if (index >= _PuppetSubParamCount(flat)) return -1;
+
+            var start = controlSubParamStart[flat];
+            if (start < 0 || start + index >= controlSubParams.Length) return -1;
+            return controlSubParams[start + index];
+        }
+
+        private int _PuppetSubParamCount(int flat)
+        {
+            if (controlTypes == null || flat < 0 || flat >= controlTypes.Length) return 0;
+            var type = controlTypes[flat];
+            if (type == ControlTwoAxis) return 2;
+            if (type == ControlFourAxis) return 4;
+            if (type == ControlRadialPuppet) return 1;
+            return 0;
         }
 
         private int _CurrentControlStart()

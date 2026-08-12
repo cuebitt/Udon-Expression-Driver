@@ -17,8 +17,8 @@ namespace UdonExpressionDriver
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     public class RadialMenu : UdonSharpBehaviour
     {
-        private const float DefaultInnerRadius = 0.1f;
-        private const float DefaultOuterRadius = 0.3f;
+        private const float DefaultInnerRadius = 0.3f;
+        private const float DefaultOuterRadius = 0.9f;
         private const int DefaultRadialSteps = 48;
         private const float DefaultLabelHeightOffset = 0.01f;
         private const float DefaultLabelScale = 0.25f;
@@ -28,6 +28,9 @@ namespace UdonExpressionDriver
         private const string LabelName = "Label";
         private const string TextName = "Text";
         private const string IconName = "Icon";
+        private const float IconAboveLabel = 1.5f;
+        private const float IconScale = 1.5f;
+        private const float IconElevation = -0.01f;
 
         [Header("Circle Segment Generator Settings")]
         [Range(1, 8)] [SerializeField] private int segmentCount = 8;
@@ -56,13 +59,35 @@ namespace UdonExpressionDriver
         [Tooltip("Full controller whose expressions menu this radial displays.")]
         [SerializeField] private UEDFullController fullController;
 
+        [SerializeField, HideInInspector] private bool autoLinked;
+
         private readonly int _mainTexShaderProperty = Shader.PropertyToID("_MainTex");
 
         private void Start()
         {
             if (segments == null || segments.Length == 0) return;
+            _ApplyWorldScale();
             _SetupSegments();
             _SetupLabelsAndIcons();
+        }
+
+        /// <summary>
+        /// Cancels the scale of the menu's parent chain so the menu always renders at a fixed world
+        /// size (the radius values are world units), no matter how the parent prop/controller is scaled.
+        /// </summary>
+        private void _ApplyWorldScale()
+        {
+            var parent = transform.parent;
+            if (parent == null) return;
+
+            var parentScale = parent.lossyScale;
+            if (parentScale.x <= 0f || parentScale.y <= 0f || parentScale.z <= 0f) return;
+
+            transform.localScale = new Vector3(
+                1f / parentScale.x,
+                1f / parentScale.y,
+                1f / parentScale.z
+            );
         }
 
 #if !COMPILER_UDONSHARP && UNITY_EDITOR
@@ -124,6 +149,7 @@ namespace UdonExpressionDriver
             labels = names;
             icons = iconArray;
 
+            _ApplyWorldScale();
             _SetupSegments();
             _SetupLabelsAndIcons();
         }
@@ -229,51 +255,63 @@ namespace UdonExpressionDriver
                 var label = seg.transform.Find(LabelName);
                 if (!label) continue;
 
+                var midAngle = Mathf.Deg2Rad * (angleStep * i);
+                var midRadius = (innerRadius + outerRadius) * 0.5f;
+                var sinA = Mathf.Sin(midAngle);
+                var cosA = Mathf.Cos(midAngle);
+
+                label.localPosition = new Vector3(
+                    sinA * midRadius,
+                    labelOffset,
+                    cosA * midRadius - DefaultLabelZOffset * midRadius
+                );
+
+                label.localScale = Vector3.one * DefaultLabelScale * midRadius;
+                label.localRotation = Quaternion.Euler(90f, 0f, 0f);
+
+                var hasText = hasLabels && i < labels.Length && !string.IsNullOrEmpty(labels[i]);
+                var hasIcon = hasIcons && i < icons.Length && icons[i] != null;
+
                 var text = label.Find(TextName);
-                if (text && hasLabels && i < labels.Length && !string.IsNullOrEmpty(labels[i]))
+                if (text)
                 {
-                    var tmpText = text.gameObject.GetComponent<TMP_Text>();
-                    if (tmpText != null)
+                    if (hasText)
                     {
-                        tmpText.text = labels[i];
+                        var tmpText = text.gameObject.GetComponent<TMP_Text>();
+                        if (tmpText != null) tmpText.text = labels[i];
+
+                        text.localPosition = Vector3.zero;
                         text.gameObject.SetActive(true);
                     }
-                }
-                else if (text)
-                {
-                    text.gameObject.SetActive(false);
+                    else
+                    {
+                        text.gameObject.SetActive(false);
+                    }
                 }
 
                 var icon = label.Find(IconName);
-                if (icon && hasIcons && i < icons.Length && icons[i] != null)
+                if (icon)
                 {
                     var iconMr = icon.GetComponent<MeshRenderer>();
-                    if (iconMr != null)
+                    if (hasIcon && iconMr != null)
                     {
                         var block = new MaterialPropertyBlock();
                         iconMr.GetPropertyBlock(block);
                         block.SetTexture(_mainTexShaderProperty, icons[i]);
                         iconMr.SetPropertyBlock(block);
 
+                        // Stack the icon above the label in the label's own frame, so it sits above
+                        // the text no matter which way the wedge is oriented.
+                        icon.localPosition = new Vector3(0f, IconAboveLabel, IconElevation);
+                        icon.localScale = Vector3.one * IconScale;
+
                         icon.gameObject.SetActive(true);
                     }
+                    else
+                    {
+                        icon.gameObject.SetActive(false);
+                    }
                 }
-                else if (icon)
-                {
-                    icon.gameObject.SetActive(false);
-                }
-
-                var midAngle = Mathf.Deg2Rad * (angleStep * i);
-                var midRadius = (innerRadius + outerRadius) * 0.5f;
-
-                label.localPosition = new Vector3(
-                    Mathf.Sin(midAngle) * midRadius,
-                    labelOffset,
-                    Mathf.Cos(midAngle) * midRadius - DefaultLabelZOffset * midRadius
-                );
-
-                label.localScale = Vector3.one * DefaultLabelScale * midRadius;
-                label.localRotation = Quaternion.Euler(90f, 0f, 0f);
             }
         }
 

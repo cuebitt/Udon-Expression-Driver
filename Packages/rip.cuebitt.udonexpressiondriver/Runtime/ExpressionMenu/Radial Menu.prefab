@@ -180,11 +180,11 @@ MonoBehaviour:
     SerializationNodes: []
   _udonSharpBackingUdonBehaviour: {fileID: 1921552578177886860}
   segmentCount: 8
-  innerRadius: 0.1
-  outerRadius: 0.3
-  radialSteps: 16
+  innerRadius: 0.3
+  outerRadius: 0.9
+  radialSteps: 32
   labelOffset: 0.01
-  borderThickness: 0.005
+  borderThickness: 0.01
   labels: []
   icons: []
   segments:
@@ -199,6 +199,7 @@ MonoBehaviour:
   gradientMaterial: {fileID: 2100000, guid: 7aa33669df57c3f419003c515c7d8870, type: 2}
   borderMeshHolder: {fileID: 6181852384042853694}
   fullController: {fileID: 0}
+  autoLinked: 0
 --- !u!114 &1921552578177886860
 MonoBehaviour:
   m_ObjectHideFlags: 0

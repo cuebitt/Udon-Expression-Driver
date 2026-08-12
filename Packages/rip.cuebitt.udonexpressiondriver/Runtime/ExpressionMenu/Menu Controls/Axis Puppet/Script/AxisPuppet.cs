@@ -3,7 +3,6 @@ using TMPro;
 using UdonSharp;
 using UnityEngine;
 using UnityEngine.UI;
-using VRC.Udon.Common.Interfaces;
 
 #if !COMPILER_UDONSHARP && UNITY_EDITOR
 using UnityEditor;
@@ -36,10 +35,10 @@ namespace UdonExpressionDriver
 
         [Header("Event Handler")]
         
-        [SerializeField] private UdonSharpBehaviour eventHandlerBehaviour;
-        [SerializeField] private string twoAxisEventName;
-        [SerializeField] private string fourAxisEventName;
-        [SerializeField] private string headerClickedEventName;
+        [SerializeField] [Tooltip("Component to notify when the value changes or the header is clicked")]
+        private UEDPuppetHandler handler;
+
+        [SerializeField, HideInInspector] private bool autoLinked;
 
         [Header("Internal")]
         
@@ -190,18 +189,15 @@ namespace UdonExpressionDriver
 
         public void OnHeaderClicked()
         {
-            if (eventHandlerBehaviour != null && !string.IsNullOrEmpty(headerClickedEventName))
-                eventHandlerBehaviour.SendCustomEvent(headerClickedEventName);
+            if (handler != null) handler._OnPuppetClose();
         }
 
         private void SendValueUpdate()
         {
-            if (eventHandlerBehaviour == null) return;
+            if (handler == null) return;
 
             if (AxisPuppetType == AxisPuppetType.Four)
             {
-                if (string.IsNullOrEmpty(fourAxisEventName)) return;
-
                 var coords = PuppetValue;
                 
                 // X direction
@@ -212,17 +208,14 @@ namespace UdonExpressionDriver
                 var dyPlus  = Mathf.Max(coords.y * 2 - 1, 0f);
                 var dyMinus = Mathf.Max(1 - coords.y * 2, 0f);
 
-                eventHandlerBehaviour.SendCustomNetworkEvent(NetworkEventTarget.Self, fourAxisEventName, dxMinus,
-                    dxPlus, dyMinus, dyPlus);
+                handler._OnPuppetFour(dxMinus, dxPlus, dyMinus, dyPlus);
             }
             else if (AxisPuppetType == AxisPuppetType.Two)
             {
-                if (string.IsNullOrEmpty(twoAxisEventName)) return;
-
                 var xValue = PuppetValue.x * 2 - 1;
                 var yValue = PuppetValue.y * 2 - 1;
 
-                eventHandlerBehaviour.SendCustomNetworkEvent(NetworkEventTarget.Self, twoAxisEventName, xValue, yValue);
+                handler._OnPuppetTwo(xValue, yValue);
             }
         }
     }

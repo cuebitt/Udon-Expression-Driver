@@ -20,8 +20,35 @@ namespace UdonExpressionDriver.Editor
         {
             if (UdonSharpGUI.DrawDefaultUdonSharpBehaviourHeader(target, false, false)) return;
 
+            // The auto-import and animator rewrite touch the prop's components and assets, which can
+            // throw when the prop is in a half-configured state (e.g. no Animator yet). Contain it so
+            // nothing escapes into UdonSharp's inspector wrapper and floods the console every repaint.
+            try
+            {
+                DrawCore();
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[UED] Error drawing FullController inspector for '{target.name}': {e}", target);
+            }
+        }
+
+        private void DrawCore()
+        {
             var controller = (UEDFullController)target;
             var vrcFuryPresent = UEDVrcFuryBridge.AutoImportMenu(controller);
+
+            // Swaps the prop's Animator onto a prop-relative copy of the controller (avatar-prop
+            // clip paths don't resolve against the prop root's own Animator). Idempotent, so this
+            // is cheap on every repaint and keeps the Animation window showing resolved bindings.
+            try
+            {
+                UEDAnimatorRewriter.ApplyForProp(controller);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[UED] Failed to apply rewritten animator controller for '{controller.name}': {e}", controller);
+            }
 
             DrawDescription(
                 "Drives a prop's Animator from expression parameters and shows the prop's expressions " +
@@ -30,8 +57,22 @@ namespace UdonExpressionDriver.Editor
                 "are imported automatically.");
 
             DrawMenuViewSection();
+            DrawPuppetsSection();
             DrawExpressionsSection(controller, vrcFuryPresent);
             DrawStatus(controller);
+        }
+
+        private void DrawPuppetsSection()
+        {
+            BeginSection("Puppets");
+
+            serializedObject.Update();
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("radialPuppet"), new GUIContent("Radial Puppet"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("axisPuppet"), new GUIContent("Axis Puppet"));
+            serializedObject.ApplyModifiedProperties();
+
+            EditorGUILayout.HelpBox("World-space puppet controls shown when a puppet menu item is pressed. Created automatically if unset.", MessageType.Info);
+            EndSection();
         }
 
         private void DrawMenuViewSection()
@@ -64,7 +105,7 @@ namespace UdonExpressionDriver.Editor
             if (newParameters != parameters) UEDVrcFuryBridge.SetStoredAsset(serialized, "importedParametersGuid", newParameters);
             serialized.ApplyModifiedProperties();
 
-            EditorGUILayout.HelpBox("Applied automatically when you enter play mode or build.", MessageType.Info);
+            EditorGUILayout.HelpBox("Applied automatically in edit mode, play mode, and builds (as a generated, prop-relative copy).", MessageType.Info);
 
             if (vrcFuryPresent && GUILayout.Button("Re-import from VRCFury"))
                 UEDVrcFuryBridge.ReimportFromVrcFury(controller);

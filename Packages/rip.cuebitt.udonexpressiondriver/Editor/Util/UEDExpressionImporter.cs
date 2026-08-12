@@ -9,11 +9,16 @@ namespace UdonExpressionDriver.Editor
     /// <summary>
     /// Imports a VRCExpressionsMenu + VRCExpressionParameters into a UEDFullController's
     /// serialized arrays (the editor-side convenience; runtime data is embedded on the
-    /// component). Puppet controls (two/four-axis, radial) are skipped with a warning;
-    /// they need subParameter support that isn't wired up yet.
+    /// component). Puppet controls (two/four-axis, radial) import their sub-parameters
+    /// into the flat controlSubParams array.
     /// </summary>
     public static class UEDExpressionImporter
     {
+        private const int ControlTwoAxis = 3;
+        private const int ControlFourAxis = 4;
+        private const int ControlRadialPuppet = 6;
+        private const int MaxPuppetSubParams = 4;
+
         private struct ControlDef
         {
             public int type;
@@ -22,6 +27,7 @@ namespace UdonExpressionDriver.Editor
             public int paramIndex;
             public float value;
             public int subMenuIndex;
+            public int[] subParamIndices;
         }
 
         public static void Import(UEDFullController controller, VRCExpressionsMenu menu, VRCExpressionParameters parameters)
@@ -61,8 +67,7 @@ namespace UdonExpressionDriver.Editor
             var menuList = new List<List<ControlDef>>();
             var menuIndexMap = new Dictionary<VRCExpressionsMenu, int>();
             seenMenus.Clear();
-            var skippedPuppets = 0;
-            FlattenMenu(menu, menuList, menuIndexMap, seenMenus, paramByName, ref skippedPuppets);
+            FlattenMenu(menu, menuList, menuIndexMap, seenMenus, paramByName);
 
             var controlTypes = new List<int>();
             var controlNames = new List<string>();
@@ -70,6 +75,8 @@ namespace UdonExpressionDriver.Editor
             var controlParamIndex = new List<int>();
             var controlValues = new List<float>();
             var controlSubmenuIndex = new List<int>();
+            var controlSubParamStart = new List<int>();
+            var controlSubParams = new List<int>();
             var menuControlStart = new List<int>();
 
             var controlCount = 0;
@@ -84,6 +91,18 @@ namespace UdonExpressionDriver.Editor
                     controlParamIndex.Add(c.paramIndex);
                     controlValues.Add(c.value);
                     controlSubmenuIndex.Add(c.subMenuIndex);
+
+                    if (c.subParamIndices != null && c.subParamIndices.Length > 0)
+                    {
+                        controlSubParamStart.Add(controlSubParams.Count);
+                        foreach (var subParam in c.subParamIndices)
+                            controlSubParams.Add(subParam);
+                    }
+                    else
+                    {
+                        controlSubParamStart.Add(-1);
+                    }
+
                     controlCount++;
                 }
             }
@@ -102,10 +121,11 @@ namespace UdonExpressionDriver.Editor
             SetIntArray(serialized, "controlParamIndex", controlParamIndex);
             SetFloatArray(serialized, "controlValues", controlValues);
             SetIntArray(serialized, "controlSubmenuIndex", controlSubmenuIndex);
+            SetIntArray(serialized, "controlSubParamStart", controlSubParamStart);
+            SetIntArray(serialized, "controlSubParams", controlSubParams);
             serialized.ApplyModifiedProperties();
 
-            var puppetNote = skippedPuppets > 0 ? $" (skipped {skippedPuppets} puppet control(s))" : "";
-            Debug.Log($"[UED] Imported {paramNames.Count} parameter(s), {menuList.Count} menu(s), {controlCount} control(s) into '{controller.name}'{puppetNote}.");
+            Debug.Log($"[UED] Imported {paramNames.Count} parameter(s), {menuList.Count} menu(s), {controlCount} control(s) into '{controller.name}'.");
         }
 
         private static void CollectReferencedParams(VRCExpressionsMenu menu, HashSet<VRCExpressionsMenu> seen,
@@ -129,6 +149,15 @@ namespace UdonExpressionDriver.Editor
                 if (c.parameter != null && !string.IsNullOrEmpty(c.parameter.name) && !paramByName.ContainsKey(c.parameter.name))
                     addParam(c.parameter.name, 0, 0f, true);
 
+                if (c.subParameters != null)
+                {
+                    foreach (var sp in c.subParameters)
+                    {
+                        if (sp == null || string.IsNullOrEmpty(sp.name) || paramByName.ContainsKey(sp.name)) continue;
+                        addParam(sp.name, 0, 0f, true);
+                    }
+                }
+
                 if (c.type == VRCExpressionsMenu.Control.ControlType.SubMenu)
                     CollectReferencedParams(c.subMenu, seen, paramByName, addParam);
             }
@@ -136,7 +165,7 @@ namespace UdonExpressionDriver.Editor
 
         private static void FlattenMenu(VRCExpressionsMenu menu, List<List<ControlDef>> menuList,
             Dictionary<VRCExpressionsMenu, int> menuIndexMap, HashSet<VRCExpressionsMenu> seen,
-            Dictionary<string, int> paramByName, ref int skippedPuppets)
+            Dictionary<string, int> paramByName)
         {
             if (menu == null || !seen.Add(menu)) return;
 
@@ -152,7 +181,7 @@ namespace UdonExpressionDriver.Editor
                 if (c == null) continue;
 
                 var type = ToControlType(c.type);
-                if (type < 0) { skippedPuppets++; continue; }
+                if (type < 0) continue;
 
                 var control = new ControlDef
                 {
@@ -168,9 +197,24 @@ namespace UdonExpressionDriver.Editor
                 {
                     if (c.subMenu != null)
                     {
-                        FlattenMenu(c.subMenu, menuList, menuIndexMap, seen, paramByName, ref skippedPuppets);
+                        FlattenMenu(c.subMenu, menuList, menuIndexMap, seen, paramByName);
                         if (menuIndexMap.TryGetValue(c.subMenu, out var subIndex))
                             control.subMenuIndex = subIndex;
+                    }
+                }
+                else if (type == ControlTwoAxis || type == ControlFourAxis || type == ControlRadialPuppet)
+                {
+                    if (c.subParameters != null)
+                    {
+                        var subParams = new List<int>();
+                        for (var i = 0; i < System.Math.Min(c.subParameters.Length, MaxPuppetSubParams); i++)
+                        {
+                            var sp = c.subParameters[i];
+                            if (sp == null || string.IsNullOrEmpty(sp.name)) continue;
+                            if (paramByName.TryGetValue(sp.name, out var subIndex))
+                                subParams.Add(subIndex);
+                        }
+                        if (subParams.Count > 0) control.subParamIndices = subParams.ToArray();
                     }
                 }
                 else if (c.parameter != null && paramByName.TryGetValue(c.parameter.name, out var paramIndex))
@@ -199,7 +243,10 @@ namespace UdonExpressionDriver.Editor
                 case VRCExpressionsMenu.Control.ControlType.Button: return 0;
                 case VRCExpressionsMenu.Control.ControlType.Toggle: return 1;
                 case VRCExpressionsMenu.Control.ControlType.SubMenu: return 2;
-                default: return -1; // puppets are skipped for now
+                case VRCExpressionsMenu.Control.ControlType.TwoAxisPuppet: return ControlTwoAxis;
+                case VRCExpressionsMenu.Control.ControlType.FourAxisPuppet: return ControlFourAxis;
+                case VRCExpressionsMenu.Control.ControlType.RadialPuppet: return ControlRadialPuppet;
+                default: return -1;
             }
         }
 
@@ -261,7 +308,17 @@ namespace UdonExpressionDriver.Editor
             {
                 new VRCExpressionParameters.Parameter { name = "Blend", valueType = VRCExpressionParameters.ValueType.Float, defaultValue = 0f, networkSynced = true },
                 new VRCExpressionParameters.Parameter { name = "Emit", valueType = VRCExpressionParameters.ValueType.Bool, defaultValue = 0f, networkSynced = true },
+                new VRCExpressionParameters.Parameter { name = "X", valueType = VRCExpressionParameters.ValueType.Float, defaultValue = 0f, networkSynced = true },
+                new VRCExpressionParameters.Parameter { name = "Y", valueType = VRCExpressionParameters.ValueType.Float, defaultValue = 0f, networkSynced = true },
+                new VRCExpressionParameters.Parameter { name = "Nx", valueType = VRCExpressionParameters.ValueType.Float, defaultValue = 0f, networkSynced = true },
+                new VRCExpressionParameters.Parameter { name = "Px", valueType = VRCExpressionParameters.ValueType.Float, defaultValue = 0f, networkSynced = true },
+                new VRCExpressionParameters.Parameter { name = "Ny", valueType = VRCExpressionParameters.ValueType.Float, defaultValue = 0f, networkSynced = true },
+                new VRCExpressionParameters.Parameter { name = "Py", valueType = VRCExpressionParameters.ValueType.Float, defaultValue = 0f, networkSynced = true },
             };
+
+            var radialIcon = CreateSampleIcon(new Color(0.2f, 0.9f, 0.4f), "Icon Radial", folder);
+            var twoAxisIcon = CreateSampleIcon(new Color(0.3f, 0.6f, 0.95f), "Icon Two Axis", folder);
+            var fourAxisIcon = CreateSampleIcon(new Color(1f, 0.55f, 0.2f), "Icon Four Axis", folder);
 
             var subMenu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
             subMenu.name = "Sample Sub Menu";
@@ -290,6 +347,33 @@ namespace UdonExpressionDriver.Editor
                 },
                 new VRCExpressionsMenu.Control
                 {
+                    name = "Radial Blend",
+                    type = VRCExpressionsMenu.Control.ControlType.RadialPuppet,
+                    icon = radialIcon,
+                    subParameters = new[] { new VRCExpressionsMenu.Control.Parameter { name = "Blend" } },
+                },
+                new VRCExpressionsMenu.Control
+                {
+                    name = "2-Axis Move",
+                    type = VRCExpressionsMenu.Control.ControlType.TwoAxisPuppet,
+                    icon = twoAxisIcon,
+                    subParameters = new[] { new VRCExpressionsMenu.Control.Parameter { name = "X" }, new VRCExpressionsMenu.Control.Parameter { name = "Y" } },
+                },
+                new VRCExpressionsMenu.Control
+                {
+                    name = "4-Axis Move",
+                    type = VRCExpressionsMenu.Control.ControlType.FourAxisPuppet,
+                    icon = fourAxisIcon,
+                    subParameters = new[]
+                    {
+                        new VRCExpressionsMenu.Control.Parameter { name = "Nx" },
+                        new VRCExpressionsMenu.Control.Parameter { name = "Px" },
+                        new VRCExpressionsMenu.Control.Parameter { name = "Ny" },
+                        new VRCExpressionsMenu.Control.Parameter { name = "Py" },
+                    },
+                },
+                new VRCExpressionsMenu.Control
+                {
                     name = "More",
                     type = VRCExpressionsMenu.Control.ControlType.SubMenu,
                     subMenu = subMenu,
@@ -312,6 +396,34 @@ namespace UdonExpressionDriver.Editor
 
             Selection.activeObject = menu;
             Debug.Log($"[UED] Created sample menu '{menuPath}' and parameters '{paramsPath}'. Import them into a UEDFullController.");
+        }
+
+        /// <summary>Creates a simple solid-color PNG icon for the sample menu so wedge icons can be tested.</summary>
+        private static Texture2D CreateSampleIcon(Color color, string name, string folder)
+        {
+            var texture = new Texture2D(16, 16, TextureFormat.RGBA32, false);
+            for (var y = 0; y < texture.height; y++)
+            {
+                for (var x = 0; x < texture.width; x++)
+                    texture.SetPixel(x, y, color);
+            }
+            texture.name = name;
+            texture.Apply();
+
+            var path = $"{folder}/{name}.png";
+            DeleteAssetAt(path);
+            System.IO.File.WriteAllBytes(path, texture.EncodeToPNG());
+            AssetDatabase.ImportAsset(path);
+
+            var importer = (TextureImporter)AssetImporter.GetAtPath(path);
+            if (importer != null)
+            {
+                importer.textureType = TextureImporterType.Default;
+                importer.alphaIsTransparency = true;
+                importer.SaveAndReimport();
+            }
+
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
         }
 
         private static void DeleteAssetAt(string path)

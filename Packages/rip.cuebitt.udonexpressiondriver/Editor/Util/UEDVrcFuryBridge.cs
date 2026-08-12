@@ -184,34 +184,17 @@ namespace UdonExpressionDriver.Editor
 
         /// <summary>
         /// Points the controller's animator field at the prop's Animator and wires in the
-        /// RuntimeAnimatorController referenced by the VRCFury FullController. If the prop has no
-        /// Animator component at all (the VRCFury asset isn't enough to play it), one is added to
-        /// the prop root. Also records the imported controller asset for the inspector. Idempotent:
-        /// only writes when something is missing or differs.
+        /// RuntimeAnimatorController referenced by the VRCFury FullController. Also records the
+        /// imported controller asset for the inspector. Idempotent: only writes when something is
+        /// missing or differs.
+        /// This runs from the inspector's repaint, so it never adds a missing Animator here; a prop
+        /// without one gets its Animator added by UEDBuildAutoLinker.EnsurePropComponents (which runs
+        /// at play/build, outside the GUI pass).
         /// </summary>
         private static void AutoImportAnimator(UEDFullController controller, RuntimeAnimatorController animatorController)
         {
-            var animator = controller.transform.root.GetComponentInChildren<Animator>(true);
-            var changed = false;
-
-            if (animator == null && animatorController != null)
-            {
-                var root = controller.transform.root.gameObject;
-                animator = root.GetComponent<Animator>();
-                if (animator == null) animator = root.AddComponent<Animator>();
-                animator.runtimeAnimatorController = animatorController;
-                changed = true;
-            }
-
-            if (animator == null) return;
-
             var serialized = new SerializedObject(controller);
-            var animatorProperty = serialized.FindProperty("animator");
-            if (animatorProperty != null && animatorProperty.objectReferenceValue != animator)
-            {
-                animatorProperty.objectReferenceValue = animator;
-                changed = true;
-            }
+            var changed = false;
 
             var importedController = serialized.FindProperty("importedAnimatorController");
             if (importedController != null && importedController.objectReferenceValue != animatorController)
@@ -220,10 +203,24 @@ namespace UdonExpressionDriver.Editor
                 changed = true;
             }
 
-            if (changed) serialized.ApplyModifiedProperties();
+            var animator = serialized.FindProperty("animator")?.objectReferenceValue as Animator;
+            if (animator == null)
+                animator = controller.transform.root.GetComponentInChildren<Animator>(true);
 
-            if (animator.runtimeAnimatorController == null && animatorController != null)
-                animator.runtimeAnimatorController = animatorController;
+            if (animator != null)
+            {
+                var animatorProperty = serialized.FindProperty("animator");
+                if (animatorProperty != null && animatorProperty.objectReferenceValue != animator)
+                {
+                    animatorProperty.objectReferenceValue = animator;
+                    changed = true;
+                }
+
+                if (animator.runtimeAnimatorController == null && animatorController != null)
+                    animator.runtimeAnimatorController = animatorController;
+            }
+
+            if (changed) serialized.ApplyModifiedProperties();
         }
 
         private static bool NeedsImport(UEDFullController controller, VRCExpressionsMenu menu, VRCExpressionParameters parameters)
@@ -254,9 +251,6 @@ namespace UdonExpressionDriver.Editor
             foreach (var c in menu.controls)
             {
                 if (c == null) continue;
-                if (c.type != VRCExpressionsMenu.Control.ControlType.Button &&
-                    c.type != VRCExpressionsMenu.Control.ControlType.Toggle &&
-                    c.type != VRCExpressionsMenu.Control.ControlType.SubMenu) continue; // puppets skipped
 
                 count++;
                 if (c.type == VRCExpressionsMenu.Control.ControlType.SubMenu)
@@ -294,6 +288,11 @@ namespace UdonExpressionDriver.Editor
             {
                 if (c == null) continue;
                 if (c.parameter != null && !string.IsNullOrEmpty(c.parameter.name)) names.Add(c.parameter.name);
+                if (c.subParameters != null)
+                {
+                    foreach (var sp in c.subParameters)
+                        if (sp != null && !string.IsNullOrEmpty(sp.name)) names.Add(sp.name);
+                }
                 if (c.type == VRCExpressionsMenu.Control.ControlType.SubMenu)
                     CollectParamNames(c.subMenu, names, seen);
             }

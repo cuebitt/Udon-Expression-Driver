@@ -1,9 +1,7 @@
 using TMPro;
 using UdonSharp;
 using UnityEngine;
-using UnityEngine.Serialization;
 using UnityEngine.UI;
-using VRC.Udon.Common.Interfaces;
 
 #if !COMPILER_UDONSHARP && UNITY_EDITOR
 using UnityEditor;
@@ -24,12 +22,10 @@ namespace UdonExpressionDriver
 
         [Header("Event Handler")]
 
-        [SerializeField] [Tooltip("Behavior to send events to")]
-        private UdonSharpBehaviour eventHandlerBehaviour;
-        [SerializeField] [Tooltip("Event name to fire when value changes")]
-        private string valueChangedEventName;
-        [SerializeField] [Tooltip("Event name to fire when header is clicked")]
-        private string headerClickedEventName;
+        [SerializeField] [Tooltip("Component to notify when the value changes or the header is clicked")]
+        private UEDPuppetHandler handler;
+
+        [SerializeField, HideInInspector] private bool autoLinked;
 
         [Header("Internal")]
 
@@ -77,14 +73,12 @@ namespace UdonExpressionDriver
         {
             Value = lowerSlider.value;
 
-            if (eventHandlerBehaviour != null && !string.IsNullOrEmpty(valueChangedEventName))
-                eventHandlerBehaviour.SendCustomNetworkEvent(NetworkEventTarget.Self, valueChangedEventName, Value);
+            if (handler != null) handler._OnPuppetRadial(Value);
         }
 
         public void OnHeaderClicked()
         {
-            if (eventHandlerBehaviour != null && !string.IsNullOrEmpty(headerClickedEventName))
-                eventHandlerBehaviour.SendCustomEvent(headerClickedEventName);
+            if (handler != null) handler._OnPuppetClose();
         }
     }
 }
