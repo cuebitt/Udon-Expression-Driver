@@ -58,7 +58,7 @@ namespace UdonExpressionDriver.Bootstrapper
                     workQueue.Enqueue(alt);
                 }
 
-                // unknown name — ignore (user can supply exact names)
+                // unknown name; ignore (user can supply exact names)
             }
 
             // BFS: for each kept member/type, find all referenced type/member defs in same module
@@ -187,17 +187,6 @@ namespace UdonExpressionDriver.Bootstrapper
                     }
 
                     TryAddTypeReference(fref.FieldType, workQueue, keepTypes);
-                }
-                else
-                {
-                    // best-effort resolve
-                    if (item is MethodReference mr)
-                    {
-                        var d = TryResolveMethodDefinition(mr);
-                        if (d != null)
-                            if (keepMembers.Add(d.FullName))
-                                workQueue.Enqueue(d);
-                    }
                 }
             }
 

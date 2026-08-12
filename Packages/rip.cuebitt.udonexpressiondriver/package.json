@@ -12,7 +12,8 @@
   "vpmDependencies": {
     "com.vrchat.base": "3.x.x",
     "com.vrchat.worlds": "3.x.x",
-    "com.vrchat.core.vpm-resolver": "0.1.x"
+    "com.vrchat.core.vpm-resolver": "0.1.x",
+    "com.vrcfury.vrcfury": "1.x.x"
   },
   "legacyPackages": [
     "com.vrchat.clientsim",

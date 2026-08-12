@@ -1,7 +1,10 @@
 using UdonExpressionDriver;
+using UdonSharp;
 using UdonSharpEditor;
 using UnityEditor;
 using UnityEngine;
+using VRC.SDK3.Dynamics.Contact.Components;
+using VRC.SDK3.Dynamics.PhysBone.Components;
 
 namespace UdonExpressionDriver.Editor
 {
@@ -10,43 +13,85 @@ namespace UdonExpressionDriver.Editor
     {
         public override void OnInspectorGUI()
         {
-            var boxWithPadding = new GUIStyle(GUI.skin.box)
-            {
-                padding = new RectOffset(15, 15, 10, 10)
-            };
+            if (UdonSharpGUI.DrawDefaultUdonSharpBehaviourHeader(target, false, false)) return;
 
-            if (UdonSharpGUI.DrawDefaultUdonSharpBehaviourHeader(target)) return;
+            DrawDescription(
+                "Base class shared by UED prop behaviours. It does nothing on its own. " +
+                "Add a UEDArmatureLink for a wearable prop or a UEDFullController to drive an expressions menu.");
 
-            EditorGUILayout.Space(10);
+            // Draw the behaviour's serialized fields (param/menu arrays, etc.).
+            base.OnInspectorGUI();
+        }
 
-            EditorGUILayout.BeginVertical(boxWithPadding);
-            DrawUtilitiesSection();
+        /// <summary>Draws a VRCFury-style info box at the top of the inspector explaining what the component does.</summary>
+        protected static void DrawDescription(string text)
+        {
+            EditorGUILayout.HelpBox(text, MessageType.Info);
+        }
+
+        /// <summary>Starts a titled help-box section grouping inspector fields.</summary>
+        protected static void BeginSection(string title)
+        {
+            EditorGUILayout.Space(8);
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            EditorGUILayout.LabelField(title, EditorStyles.boldLabel);
+        }
+
+        /// <summary>Ends a section started with <see cref="BeginSection"/>.</summary>
+        protected static void EndSection()
+        {
             EditorGUILayout.EndVertical();
         }
 
-        private void DrawUtilitiesSection()
+        /// <summary>
+        /// Adds a PhysboneForwarder to every child with a VRCPhysBone and a ContactForwarder
+        /// to every child with a contact sender/receiver, wiring them to the root UEDBehaviour.
+        /// Added forwarders are flagged with the hidden autoLinked marker so UEDBuildAutoLinker
+        /// can remove them again after play/build (survives domain reloads). Idempotent: skips
+        /// children that already have one.
+        /// </summary>
+        public static (int PhysboneCount, int ContactCount) LinkChildForwardersAndCount(GameObject go)
         {
-            GUILayout.Label("Udon Expression Driver", EditorStyles.boldLabel);
-            GUILayout.Space(10);
+            var rootBehaviour = go.GetComponent<UEDBehaviour>();
+            if (rootBehaviour == null) return (0, 0);
 
-            if (GUILayout.Button("Link Child Forwarders"))
+            var physboneCount = 0;
+            var contactCount = 0;
+
+            foreach (var child in go.GetComponentsInChildren<Transform>(true))
             {
-                var go = ((UEDBehaviour)target).gameObject;
-                LinkChildForwarders(go);
+                var childGo = child.gameObject;
+                if (childGo == go) continue;
+
+                if (childGo.GetComponent<VRCPhysBone>() != null && childGo.GetComponent<PhysboneForwarder>() == null)
+                {
+                    var forwarder = UdonSharpUndo.AddComponent<PhysboneForwarder>(childGo);
+                    ConfigureForwarder(forwarder, rootBehaviour);
+                    physboneCount++;
+                }
+
+                var hasContact = childGo.GetComponent<VRCContactReceiver>() != null ||
+                                 childGo.GetComponent<VRCContactSender>() != null;
+                if (hasContact && childGo.GetComponent<ContactForwarder>() == null)
+                {
+                    var forwarder = UdonSharpUndo.AddComponent<ContactForwarder>(childGo);
+                    ConfigureForwarder(forwarder, rootBehaviour);
+                    contactCount++;
+                }
             }
+
+            return (physboneCount, contactCount);
         }
 
-        private static void LinkChildForwarders(GameObject go)
+        /// <summary>Wires the target and marks the forwarder as auto-linked (tool-managed).</summary>
+        private static void ConfigureForwarder(UdonSharpBehaviour forwarder, UdonSharpBehaviour target)
         {
-            Debug.Log("[Udon Expression Driver] Linking child forwarders...");
-
-            var rootBehaviour = go.GetComponent<UEDBehaviour>();
-
-            Debug.Log("[Udon Expression Driver] Linking Physbone forwarders...");
-            // Link Physbone event forwarders
-
-            Debug.Log("[Udon Expression Driver] Linking Contact forwarders...");
-            // Link Contacte event forwarders
+            var serialized = new SerializedObject(forwarder);
+            var targetProperty = serialized.FindProperty("target");
+            if (targetProperty != null) targetProperty.objectReferenceValue = target;
+            var autoProperty = serialized.FindProperty("autoLinked");
+            if (autoProperty != null) autoProperty.boolValue = true;
+            serialized.ApplyModifiedProperties();
         }
     }
 }

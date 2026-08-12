@@ -283,7 +283,7 @@ MonoBehaviour:
       Data: 22|UnityEngine.TooltipAttribute, UnityEngine.CoreModule
     - Name: tooltip
       Entry: 1
-      Data: Behaviour to send events to
+      Data: Behavior to send events to
     - Name: 
       Entry: 8
       Data: 

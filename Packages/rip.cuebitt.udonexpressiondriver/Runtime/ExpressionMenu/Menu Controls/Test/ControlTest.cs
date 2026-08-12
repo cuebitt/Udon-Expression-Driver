@@ -1,5 +1,4 @@
-﻿using System.Globalization;
-using TMPro;
+﻿using TMPro;
 using UdonSharp;
 using UnityEngine;
 using VRC.SDK3.UdonNetworkCalling;

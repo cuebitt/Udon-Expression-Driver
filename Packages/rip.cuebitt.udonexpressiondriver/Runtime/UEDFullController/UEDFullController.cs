@@ -1,0 +1,397 @@
+using UdonSharp;
+using UnityEngine;
+using VRC.SDKBase;
+
+namespace UdonExpressionDriver
+{
+    /// <summary>
+    /// Drives a prop's Animator from expression parameters and exposes the prop's
+    /// expressions menu (controls) to a world-space menu view.
+    /// All configuration is embedded on the component, with no runtime ScriptableObject.
+    /// Synced parameters are owner-written; all clients apply them to the Animator.
+    /// </summary>
+    [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
+    public class UEDFullController : UEDBehaviour
+    {
+        private const int ParamTypeFloat = 0;
+        private const int ParamTypeInt = 1;
+        private const int ParamTypeBool = 2;
+
+        private const int ControlButton = 0;
+        private const int ControlToggle = 1;
+        private const int ControlSubMenu = 2;
+        private const int ControlBack = 5;
+
+        private const int MaxMenuStackDepth = 8;
+        private const int MaxMenuControls = 8;
+        private const float ToggleEpsilon = 0.001f;
+
+        [Header("Animator")]
+        [Tooltip("Animator on the prop whose parameters this controller drives.")]
+        [SerializeField] private Animator animator;
+
+        [Header("Parameters")]
+        [Tooltip("Animator parameter names, one per entry.")]
+        [SerializeField] private string[] paramNames;
+        [Tooltip("Parameter types: 0 = float, 1 = int, 2 = bool.")]
+        [SerializeField] private int[] paramTypes;
+        [Tooltip("Default value for each parameter.")]
+        [SerializeField] private float[] paramDefaults;
+        [Tooltip("Whether each parameter is network-synced. Unsynced parameters are local to the owner.")]
+        [SerializeField] private bool[] paramSynced;
+
+        [Header("Menu")]
+        [Tooltip("Start index into the control arrays for each menu; length = menu count + 1.")]
+        [SerializeField] private int[] menuControlStart;
+        [Tooltip("Control types: 0 = button, 1 = toggle, 2 = submenu, 3 = two-axis, 4 = four-axis, 5 = back.")]
+        [SerializeField] private int[] controlTypes;
+        [SerializeField] private string[] controlNames;
+        [SerializeField] private Texture2D[] controlIcons;
+        [Tooltip("Parameter index each control operates on, -1 for none.")]
+        [SerializeField] private int[] controlParamIndex;
+        [Tooltip("Value a button sets or a toggle activates.")]
+        [SerializeField] private float[] controlValues;
+        [Tooltip("Submenu index for submenu controls, -1 for none.")]
+        [SerializeField] private int[] controlSubmenuIndex;
+
+        [Tooltip("Radial menu view to populate from this controller's current menu level.")]
+        [SerializeField] private RadialMenu menuView;
+        [Tooltip("Whether interacting with this prop toggles the menu visibility.")]
+        [SerializeField] private bool interactTogglesMenu = true;
+
+        [SerializeField, HideInInspector] private RuntimeAnimatorController importedAnimatorController;
+        [SerializeField, HideInInspector] private string importedMenuGuid;
+        [SerializeField, HideInInspector] private string importedParametersGuid;
+
+        [UdonSynced] private float[] _syncedValues = new float[0];
+        private float[] _localValues = new float[0];
+        private int[] _syncedSlot = new int[0];
+        private int[] _localSlot = new int[0];
+        private int[] _paramHashes = new int[0];
+
+        private int _currentMenu;
+        private int[] _menuStack = new int[MaxMenuStackDepth];
+        private int _menuStackDepth;
+
+        private void Start()
+        {
+            if (paramNames == null) paramNames = new string[0];
+            if (paramTypes == null) paramTypes = new int[0];
+            if (paramDefaults == null) paramDefaults = new float[0];
+            if (paramSynced == null) paramSynced = new bool[0];
+
+            var count = paramNames.Length;
+            var syncedCount = 0;
+            for (var i = 0; i < count; i++)
+            {
+                if (i < paramSynced.Length && paramSynced[i]) syncedCount++;
+            }
+
+            _syncedValues = new float[syncedCount];
+            _localValues = new float[count - syncedCount];
+            _syncedSlot = new int[count];
+            _localSlot = new int[count];
+            _paramHashes = new int[count];
+
+            var syncSlot = 0;
+            var localSlot = 0;
+            for (var i = 0; i < count; i++)
+            {
+                _paramHashes[i] = Animator.StringToHash(paramNames[i]);
+                _syncedSlot[i] = -1;
+                _localSlot[i] = -1;
+
+                var def = i < paramDefaults.Length ? paramDefaults[i] : 0f;
+                if (i < paramSynced.Length && paramSynced[i])
+                {
+                    _syncedSlot[i] = syncSlot;
+                    _syncedValues[syncSlot] = def;
+                    syncSlot++;
+                }
+                else
+                {
+                    _localSlot[i] = localSlot;
+                    _localValues[localSlot] = def;
+                    localSlot++;
+                }
+            }
+
+            _ApplyAllToAnimator();
+            _RefreshMenuView();
+        }
+
+        public override void OnDeserialization()
+        {
+            _ApplyAllToAnimator();
+        }
+
+        /// <summary>
+        /// Sets a parameter by index using its float representation. Synced parameters
+        /// are only written by the owner; non-owner writes are ignored.
+        /// </summary>
+        public void _SetParam(int index, float value)
+        {
+            if (paramNames == null || index < 0 || index >= paramNames.Length) return;
+
+            if (index < paramSynced.Length && paramSynced[index])
+            {
+                if (!Networking.IsOwner(gameObject)) return;
+                _syncedValues[_syncedSlot[index]] = value;
+                RequestSerialization();
+            }
+            else
+            {
+                _localValues[_localSlot[index]] = value;
+            }
+
+            _ApplyToAnimator(index, value);
+        }
+
+        public void _SetFloatParam(int index, float value)
+        {
+            _SetParam(index, value);
+        }
+
+        public void _SetIntParam(int index, int value)
+        {
+            _SetParam(index, value);
+        }
+
+        public void _SetBoolParam(int index, bool value)
+        {
+            _SetParam(index, value ? 1f : 0f);
+        }
+
+        /// <summary>Returns the current value of a parameter as a float.</summary>
+        public float _GetParam(int index)
+        {
+            if (paramNames == null || index < 0 || index >= paramNames.Length) return 0f;
+            if (index < paramSynced.Length && paramSynced[index]) return _syncedValues[_syncedSlot[index]];
+            return _localValues[_localSlot[index]];
+        }
+
+        public int _GetParamCount()
+        {
+            return paramNames == null ? 0 : paramNames.Length;
+        }
+
+        /// <summary>Resets all parameters to their defaults. Only the owner's writes are synced.</summary>
+        public void _ResetParameters()
+        {
+            if (paramNames == null) return;
+
+            var owner = Networking.IsOwner(gameObject);
+            var changed = false;
+            for (var i = 0; i < paramNames.Length; i++)
+            {
+                var def = i < paramDefaults.Length ? paramDefaults[i] : 0f;
+                if (i < paramSynced.Length && paramSynced[i])
+                {
+                    if (!owner) continue;
+                    _syncedValues[_syncedSlot[i]] = def;
+                    changed = true;
+                }
+                else
+                {
+                    _localValues[_localSlot[i]] = def;
+                }
+            }
+
+            if (owner && changed) RequestSerialization();
+            _ApplyAllToAnimator();
+        }
+
+        public int _GetMenuCount()
+        {
+            if (menuControlStart == null) return 0;
+            return menuControlStart.Length > 0 ? menuControlStart.Length - 1 : 0;
+        }
+
+        public int _GetCurrentMenu()
+        {
+            return _currentMenu;
+        }
+
+        public int _GetCurrentMenuControlCount()
+        {
+            return _NextControlStart() - _CurrentControlStart();
+        }
+
+        public string _GetControlName(int controlIndex)
+        {
+            var flat = _CurrentControlStart() + controlIndex;
+            if (controlNames == null || flat < 0 || flat >= controlNames.Length) return "";
+            return controlNames[flat];
+        }
+
+        public Texture2D _GetControlIcon(int controlIndex)
+        {
+            var flat = _CurrentControlStart() + controlIndex;
+            if (controlIcons == null || flat < 0 || flat >= controlIcons.Length) return null;
+            return controlIcons[flat];
+        }
+
+        public void _OpenMenu(int menuIndex)
+        {
+            if (menuIndex < 0 || menuIndex >= _GetMenuCount()) return;
+
+            if (_menuStackDepth < MaxMenuStackDepth)
+            {
+                _menuStack[_menuStackDepth] = _currentMenu;
+                _menuStackDepth++;
+            }
+
+            _currentMenu = menuIndex;
+            _RefreshMenuView();
+        }
+
+        public void _Back()
+        {
+            if (_menuStackDepth <= 0)
+            {
+                _currentMenu = 0;
+                _RefreshMenuView();
+                return;
+            }
+
+            _menuStackDepth--;
+            _currentMenu = _menuStack[_menuStackDepth];
+            _RefreshMenuView();
+        }
+
+        /// <summary>Refreshes the menu view with the current menu level's controls.</summary>
+        private void _RefreshMenuView()
+        {
+            if (menuView == null) return;
+
+            var count = _GetCurrentMenuControlCount();
+            if (count < 0) count = 0;
+            if (count > MaxMenuControls) count = MaxMenuControls;
+
+            var names = new string[count];
+            var icons = new Texture2D[count];
+            for (var i = 0; i < count; i++)
+            {
+                names[i] = _GetControlName(i);
+                icons[i] = _GetControlIcon(i);
+            }
+
+            menuView.SetContent(names, icons);
+        }
+
+        public void _SetMenuVisible(bool visible)
+        {
+            if (menuView == null) return;
+            menuView._SetVisible(visible);
+        }
+
+        public void _ToggleMenu()
+        {
+            if (menuView == null) return;
+            menuView._ToggleVisible();
+        }
+
+        public override void Interact()
+        {
+            if (!interactTogglesMenu) return;
+            _ToggleMenu();
+        }
+
+        /// <summary>Handles a press on a control within the current menu level.</summary>
+        public void _OnControlPressed(int controlIndex)
+        {
+            var start = _CurrentControlStart();
+            var count = _NextControlStart() - start;
+            if (controlIndex < 0 || controlIndex >= count) return;
+
+            var flat = start + controlIndex;
+            if (controlTypes == null || flat >= controlTypes.Length) return;
+
+            var type = controlTypes[flat];
+            if (type == ControlButton)
+            {
+                var param = _ControlParam(flat);
+                if (param >= 0) _SetParam(param, _ControlValue(flat));
+            }
+            else if (type == ControlToggle)
+            {
+                var param = _ControlParam(flat);
+                if (param < 0) return;
+
+                var value = _ControlValue(flat);
+                var current = _GetParam(param);
+                if (Mathf.Abs(current - value) < ToggleEpsilon)
+                    _SetParam(param, param < paramDefaults.Length ? paramDefaults[param] : 0f);
+                else
+                    _SetParam(param, value);
+            }
+            else if (type == ControlSubMenu)
+            {
+                var subMenu = _ControlSubmenu(flat);
+                if (subMenu >= 0) _OpenMenu(subMenu);
+            }
+            else if (type == ControlBack)
+            {
+                _Back();
+            }
+        }
+
+        private int _CurrentControlStart()
+        {
+            if (menuControlStart == null) return 0;
+            return _currentMenu < menuControlStart.Length ? menuControlStart[_currentMenu] : 0;
+        }
+
+        private int _NextControlStart()
+        {
+            if (menuControlStart == null) return 0;
+            var next = _currentMenu + 1;
+            return next < menuControlStart.Length ? menuControlStart[next] : 0;
+        }
+
+        private int _ControlParam(int flat)
+        {
+            return controlParamIndex != null && flat < controlParamIndex.Length ? controlParamIndex[flat] : -1;
+        }
+
+        private float _ControlValue(int flat)
+        {
+            return controlValues != null && flat < controlValues.Length ? controlValues[flat] : 0f;
+        }
+
+        private int _ControlSubmenu(int flat)
+        {
+            return controlSubmenuIndex != null && flat < controlSubmenuIndex.Length ? controlSubmenuIndex[flat] : -1;
+        }
+
+        private void _ApplyAllToAnimator()
+        {
+            if (animator == null || paramNames == null) return;
+
+            for (var i = 0; i < paramNames.Length; i++)
+            {
+                var synced = i < paramSynced.Length && paramSynced[i];
+                var value = synced ? _syncedValues[_syncedSlot[i]] : _localValues[_localSlot[i]];
+                _ApplyToAnimator(i, value);
+            }
+        }
+
+        private void _ApplyToAnimator(int index, float value)
+        {
+            if (animator == null || index >= _paramHashes.Length) return;
+
+            var type = index < paramTypes.Length ? paramTypes[index] : ParamTypeFloat;
+            var hash = _paramHashes[index];
+            if (type == ParamTypeInt) animator.SetInteger(hash, (int)value);
+            else if (type == ParamTypeBool) animator.SetBool(hash, value > 0.5f);
+            else animator.SetFloat(hash, value);
+        }
+
+#if !COMPILER_UDONSHARP && UNITY_EDITOR
+        private void OnValidate()
+        {
+            if (animator == null) animator = GetComponentInChildren<Animator>();
+        }
+#endif
+    }
+}

@@ -52,13 +52,15 @@ namespace UdonExpressionDriver
         [Tooltip("Mesh Holder for the merged border mesh.")]
         [SerializeField] private Transform borderMeshHolder;
 
+        [Header("Controller")]
+        [Tooltip("Full controller whose expressions menu this radial displays.")]
+        [SerializeField] private UEDFullController fullController;
+
         private readonly int _mainTexShaderProperty = Shader.PropertyToID("_MainTex");
-        private Material[] _gradientMaterialArray;
 
         private void Start()
         {
             if (segments == null || segments.Length == 0) return;
-            _gradientMaterialArray = new[] { gradientMaterial };
             _SetupSegments();
             _SetupLabelsAndIcons();
         }
@@ -103,6 +105,37 @@ namespace UdonExpressionDriver
 
         public void OnButtonPress(int index)
         {
+            if (fullController == null) return;
+            fullController._OnControlPressed(index);
+        }
+
+        /// <summary>
+        /// Pushes the current menu level's labels and icons into the wedges and
+        /// rebuilds the content. Called by the controller on start and on navigation.
+        /// </summary>
+        public void SetContent(string[] names, Texture2D[] iconArray)
+        {
+            if (names == null) names = new string[0];
+            if (iconArray == null) iconArray = new Texture2D[0];
+
+            var newCount = Mathf.Max(1, Mathf.Min(names.Length, MaxSegmentArraySize));
+            if (segmentCount != newCount) segmentCount = newCount;
+
+            labels = names;
+            icons = iconArray;
+
+            _SetupSegments();
+            _SetupLabelsAndIcons();
+        }
+
+        public void _SetVisible(bool visible)
+        {
+            gameObject.SetActive(visible);
+        }
+
+        public void _ToggleVisible()
+        {
+            gameObject.SetActive(!gameObject.activeSelf);
         }
         
         /// <summary>
@@ -114,7 +147,6 @@ namespace UdonExpressionDriver
         public void _SetupSegments()
         {
             if (segments == null || gradientMaterial == null) return;
-            if (_gradientMaterialArray == null) _gradientMaterialArray = new[] { gradientMaterial };
             if (borderMeshHolder == null || borderThickness <= 0f)
             {
                 _SetupSegmentsNoBorders();
@@ -138,9 +170,6 @@ namespace UdonExpressionDriver
 #endif
                 bmf.sharedMesh = borders;
             }
-
-            // var bmr = borderMeshHolder.GetComponent<MeshRenderer>();
-            // if (bmr != null) bmr.sharedMaterials = _gradientMaterialArray;
         }
 
         private void _SetupSegmentsNoBorders()
@@ -178,10 +207,6 @@ namespace UdonExpressionDriver
                     
                     mf.sharedMesh = colliderMesh;
                 }
-                    
-
-                // var mr = meshHolder.GetComponent<MeshRenderer>();
-                // if (mr != null) mr.sharedMaterials = _gradientMaterialArray;
 
                 var mc = meshHolder.GetComponent<MeshCollider>();
                 if (mc != null && mf != null && colliderMesh != null) mc.sharedMesh = colliderMesh;

@@ -380,6 +380,10 @@ PrefabInstance:
       propertyPath: m_Mesh
       value: 
       objectReference: {fileID: 0}
+    - target: {fileID: 1921552578177886860, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
+      propertyPath: _syncMethod
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 1955309802224849835, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
       propertyPath: serializationData.Prefab
       value: 
@@ -1581,6 +1585,7 @@ MonoBehaviour:
   shapeType: 0
   radius: 0.5
   height: 2
+  size: {x: 1, y: 1, z: 1}
   position: {x: 0, y: 0, z: 0}
   rotation: {x: 0, y: 0, z: 0, w: 1}
   localOnly: 0
@@ -1589,6 +1594,7 @@ MonoBehaviour:
   - testContactTag
   allowSelf: 1
   allowOthers: 1
+  useFaceProximity: 0
   receiverType: 2
   parameter: contactThree
   minVelocity: 0.05
@@ -1608,6 +1614,7 @@ MonoBehaviour:
   shapeType: 0
   radius: 0.5
   height: 2
+  size: {x: 1, y: 1, z: 1}
   position: {x: 0, y: 0, z: 0}
   rotation: {x: 0, y: 0, z: 0, w: 1}
   localOnly: 0
@@ -1616,6 +1623,7 @@ MonoBehaviour:
   - testContactTag
   allowSelf: 1
   allowOthers: 1
+  useFaceProximity: 0
   receiverType: 0
   parameter: contactOne
   minVelocity: 0.05
@@ -1691,6 +1699,7 @@ MonoBehaviour:
   shapeType: 0
   radius: 0.5
   height: 2
+  size: {x: 1, y: 1, z: 1}
   position: {x: 0, y: 0, z: 0}
   rotation: {x: 0, y: 0, z: 0, w: 1}
   localOnly: 0
@@ -1699,6 +1708,7 @@ MonoBehaviour:
   - testContactTag
   allowSelf: 1
   allowOthers: 1
+  useFaceProximity: 0
   receiverType: 1
   parameter: contactTwo
   minVelocity: 0.05
@@ -2085,6 +2095,7 @@ MonoBehaviour:
   shapeType: 0
   radius: 0.5
   height: 2
+  size: {x: 1, y: 1, z: 1}
   position: {x: 0, y: 0, z: 0}
   rotation: {x: 0, y: 0, z: 0, w: 1}
   localOnly: 0
@@ -2173,11 +2184,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2240791349172673375, guid: 790c44bbeca58e248a060a90f41328cb, type: 3}
       propertyPath: m_AnchorMax.x
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2240791349172673375, guid: 790c44bbeca58e248a060a90f41328cb, type: 3}
       propertyPath: m_AnchorMax.y
-      value: 0.5
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2413538706700248176, guid: 790c44bbeca58e248a060a90f41328cb, type: 3}
       propertyPath: m_AnchorMax.y

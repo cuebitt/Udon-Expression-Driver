@@ -145,6 +145,17 @@ Assets/TextMesh*Pro.meta
 
 UIElementsSchema
 
+Assets/Cache~/
+
+Assets/_Pointless Assets/
+Assets/_Pointless Assets.meta
+
+Assets/Nebula Animations/
+Assets/Nebula Animations.meta
+
+Assets/UEDTest/
+Assets/UEDTest.meta
+
 AGENTS.md
 skills-lock.json
 

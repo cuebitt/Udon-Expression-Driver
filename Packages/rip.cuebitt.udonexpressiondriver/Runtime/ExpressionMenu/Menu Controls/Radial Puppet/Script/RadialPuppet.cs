@@ -24,7 +24,7 @@ namespace UdonExpressionDriver
 
         [Header("Event Handler")]
 
-        [SerializeField] [Tooltip("Behaviour to send events to")]
+        [SerializeField] [Tooltip("Behavior to send events to")]
         private UdonSharpBehaviour eventHandlerBehaviour;
         [SerializeField] [Tooltip("Event name to fire when value changes")]
         private string valueChangedEventName;
