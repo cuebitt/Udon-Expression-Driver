@@ -518,6 +518,7 @@ MonoBehaviour:
   importedParametersGuid: 
   generatedControllerGuid: 
   generatedSourceGuid: 
+  autoAddedAnimator: 0
 --- !u!95 &159333441
 Animator:
   serializedVersion: 5
@@ -763,9 +764,6 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 3878304586574899893, guid: 76c18325eb7378849a4f1c45cfdaa843, type: 3}
       insertIndex: -1
       addedObject: {fileID: 2081963078}
-    - targetCorrespondingSourceObject: {fileID: 3878304586574899893, guid: 76c18325eb7378849a4f1c45cfdaa843, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 2081963077}
   m_SourcePrefab: {fileID: 100100000, guid: 76c18325eb7378849a4f1c45cfdaa843, type: 3}
 --- !u!1 &548262341 stripped
 GameObject:
@@ -1220,36 +1218,12 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 6484937894546083813, guid: 68c3dcbf6cf26c44c86c81f40ec1a753, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1255506433}
-    - targetCorrespondingSourceObject: {fileID: 6484937894546083813, guid: 68c3dcbf6cf26c44c86c81f40ec1a753, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1255506432}
   m_SourcePrefab: {fileID: 100100000, guid: 68c3dcbf6cf26c44c86c81f40ec1a753, type: 3}
 --- !u!1 &1255506431 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 6484937894546083813, guid: 68c3dcbf6cf26c44c86c81f40ec1a753, type: 3}
   m_PrefabInstance: {fileID: 1255506430}
   m_PrefabAsset: {fileID: 0}
---- !u!95 &1255506432
-Animator:
-  serializedVersion: 5
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1255506431}
-  m_Enabled: 1
-  m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: 20c83e2252ccd144ab5c4cd4b4a204ce, type: 2}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_StabilizeFeet: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorStateOnDisable: 0
-  m_WriteDefaultValuesOnDisable: 0
 --- !u!114 &1255506433
 MonoBehaviour:
   m_ObjectHideFlags: 2
@@ -1297,7 +1271,7 @@ MonoBehaviour:
     PrefabModifications: []
     SerializationNodes: []
   _udonSharpBackingUdonBehaviour: {fileID: 1255506433}
-  animator: {fileID: 1255506432}
+  animator: {fileID: 0}
   paramNames:
   - Glass Bottle Toggle
   paramTypes: 02000000
@@ -1325,6 +1299,7 @@ MonoBehaviour:
   importedParametersGuid: 89320cd661e427545b1ae02e16fe50db
   generatedControllerGuid: 20c83e2252ccd144ab5c4cd4b4a204ce
   generatedSourceGuid: a62de8388213b334a925ef3b76424c96
+  autoAddedAnimator: 0
 --- !u!1 &1459822947 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 3127011078842134852, guid: 01e369dfe36378d45b8875f2f2c2266c, type: 3}
@@ -1999,27 +1974,6 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 3878304586574899893, guid: 76c18325eb7378849a4f1c45cfdaa843, type: 3}
   m_PrefabInstance: {fileID: 466399386}
   m_PrefabAsset: {fileID: 0}
---- !u!95 &2081963077
-Animator:
-  serializedVersion: 5
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2081963076}
-  m_Enabled: 1
-  m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: 982820d9d2b79f741adcaeee27c027fa, type: 2}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_StabilizeFeet: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorStateOnDisable: 0
-  m_WriteDefaultValuesOnDisable: 0
 --- !u!114 &2081963078
 MonoBehaviour:
   m_ObjectHideFlags: 2
@@ -2067,7 +2021,7 @@ MonoBehaviour:
     PrefabModifications: []
     SerializationNodes: []
   _udonSharpBackingUdonBehaviour: {fileID: 2081963078}
-  animator: {fileID: 2081963077}
+  animator: {fileID: 0}
   paramNames:
   - Flashlight Toggle
   - Flashlight Range
@@ -2128,6 +2082,7 @@ MonoBehaviour:
   importedParametersGuid: 746e75c34eb508847b7ce5d08d18f80e
   generatedControllerGuid: 982820d9d2b79f741adcaeee27c027fa
   generatedSourceGuid: 07cbce2136c2fd148aa1812a03e9cb45
+  autoAddedAnimator: 0
 --- !u!114 &3231720197660963110
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -93,7 +93,7 @@ namespace UdonExpressionDriver
 #if !COMPILER_UDONSHARP && UNITY_EDITOR
         private void OnValidate()
         {
-            EditorApplication.delayCall += _SetupSegments;
+            EditorApplication.delayCall += () => { if (this == null) return; _SetupSegments(); };
         }
 
         private void OnDestroy()
@@ -173,13 +173,11 @@ namespace UdonExpressionDriver
         public void _SetupSegments()
         {
             if (segments == null || gradientMaterial == null) return;
-            if (borderMeshHolder == null || borderThickness <= 0f)
-            {
-                _SetupSegmentsNoBorders();
-                return;
-            }
 
             _SetupSegmentsNoBorders();
+
+            // Borders are optional; without them the wedges are plain gradient fills.
+            if (borderMeshHolder == null || borderThickness <= 0f) return;
 
             var borders = CreateBorderMesh(segmentCount, innerRadius, outerRadius);
             var bmf = borderMeshHolder.GetComponent<MeshFilter>();
@@ -216,6 +214,7 @@ namespace UdonExpressionDriver
                 var meshHolder = seg.transform.Find(MeshHolderName);
                 if (meshHolder == null) continue;
 
+                // Rotate the wedge into its slot, centered on the slot's angle.
                 meshHolder.localRotation = Quaternion.Euler(0f, angleStep * i - startAngle, 0f);
                 var pos = meshHolder.localPosition;
                 pos.y = 0f;
@@ -346,6 +345,7 @@ namespace UdonExpressionDriver
                 uvs[i + steps + 1] = new Vector2(t, 1f);
             }
 
+            // Builds two vertex rings (inner + outer arc) and stitches two triangles per step.
             for (int i = 0, t = 0; i < steps; i++)
             {
                 var iInner1 = i + 1;
@@ -370,6 +370,7 @@ namespace UdonExpressionDriver
             return wedgeMesh;
         }
         
+        // One thin quad along each wedge boundary so adjacent fills read as separate buttons.
         private Mesh CreateBorderMesh(int segCount, float innerR, float outerR)
         {
             if (segCount < 2 || borderThickness <= 0f) return null;

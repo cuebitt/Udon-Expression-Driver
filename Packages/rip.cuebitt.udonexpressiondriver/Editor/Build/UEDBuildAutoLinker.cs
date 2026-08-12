@@ -5,7 +5,6 @@ using UdonSharpEditor;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using VRC.SDK3.Components;
 using VRC.SDKBase.Editor.BuildPipeline;
 
@@ -18,7 +17,8 @@ namespace UdonExpressionDriver.Editor
     /// permanently modified.
     /// Also ensures every UEDArmatureLink prop has a VRC Object Sync + kinematic, gravity-free
     /// Rigidbody (added permanently if missing) before play/build.
-    ///   - Play mode: added at ExitingEditMode (before the scene is cloned), removed at EnteredEditMode.
+    ///   - Play mode: added at ExitingEditMode (before the scene is cloned), removed after
+    ///     EnteredEditMode on the next editor update (once the edit scene is restored).
     ///   - Release build: added at IVRCSDKBuildRequestedCallback (edit mode) so the build bakes them,
     ///     then removed on the next build/play trigger. Never saved to the scene.
     /// Revert works by scanning for the autoLinked marker on forwarders (not a static list), so it
@@ -49,9 +49,38 @@ namespace UdonExpressionDriver.Editor
             }
             else if (state == PlayModeStateChange.EnteredEditMode)
             {
-                RevertForwarders();
-                RevertAutoLinked();
-                RevertAutoAddedAnimators();
+                // When EnteredEditMode fires the scene may not be restored to its pre-play state
+                // yet, so reverting here either finds nothing or gets overwritten by the restore
+                // that follows (leaving the auto-added Animator/puppets/menu behind in the scene).
+                // Defer to the next editor update so the cleanup runs against the restored edit
+                // scene; each pass is isolated so one failure can't skip the others.
+                EditorApplication.delayCall += RevertAutoLinkedAfterPlay;
+            }
+        }
+
+        /// <summary>
+        /// Runs after leaving play mode once the edit-mode scene has been restored. Skips when the
+        /// editor is already heading back into play, since the next ExitingEditMode pass re-adds and
+        /// cleans up its own leftovers.
+        /// </summary>
+        private static void RevertAutoLinkedAfterPlay()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode) return;
+
+            TryRevert("forwarders", RevertForwarders);
+            TryRevert("auto-linked menu/puppet objects", RevertAutoLinked);
+            TryRevert("auto-added Animators", RevertAutoAddedAnimators);
+        }
+
+        private static void TryRevert(string what, System.Action revert)
+        {
+            try
+            {
+                revert();
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[UED] Failed to revert {what} after play mode: {e}");
             }
         }
 
@@ -77,6 +106,16 @@ namespace UdonExpressionDriver.Editor
             return true;
         }
 
+        // Every UED behaviour lives somewhere under a scene root; this is the shared walk
+        // used by all the add/revert passes below.
+        private static IEnumerable<T> FindInScene<T>() where T : Component
+        {
+            var scene = EditorSceneManager.GetActiveScene();
+            foreach (var root in scene.GetRootGameObjects())
+                foreach (var component in root.GetComponentsInChildren<T>(true))
+                    yield return component;
+        }
+
         /// <summary>
         /// Ensures every UEDArmatureLink prop has a VRC Object Sync and a Rigidbody (kinematic,
         /// no gravity) added permanently if missing, and every UEDFullController prop has an
@@ -87,82 +126,78 @@ namespace UdonExpressionDriver.Editor
         /// </summary>
         private static void EnsurePropComponents()
         {
-            RevertAutoLinked();
-            RevertAutoAddedAnimators();
+            TryRevert("leftover auto-linked menu/puppet objects", RevertAutoLinked);
+            TryRevert("leftover auto-added Animators", RevertAutoAddedAnimators);
 
-            var scene = EditorSceneManager.GetActiveScene();
             var processedLinks = new HashSet<GameObject>();
             var processedControllers = new HashSet<GameObject>();
             var addedCount = 0;
 
-            foreach (var root in scene.GetRootGameObjects())
+            foreach (var link in FindInScene<UEDArmatureLink>())
             {
-                foreach (var link in root.GetComponentsInChildren<UEDArmatureLink>(true))
+                if (!processedLinks.Add(link.gameObject)) continue;
+
+                var go = link.gameObject;
+                var changed = false;
+
+                if (go.GetComponent<Rigidbody>() == null)
                 {
-                    if (!processedLinks.Add(link.gameObject)) continue;
-
-                    var go = link.gameObject;
-                    var changed = false;
-
-                    if (go.GetComponent<Rigidbody>() == null)
-                    {
-                        var rigidbody = go.AddComponent<Rigidbody>();
-                        rigidbody.isKinematic = true;
-                        rigidbody.useGravity = false;
-                        changed = true;
-                    }
-
-                    if (go.GetComponent<VRCObjectSync>() == null)
-                    {
-                        go.AddComponent<VRCObjectSync>();
-                        changed = true;
-                    }
-
-                    if (changed)
-                    {
-                        EditorUtility.SetDirty(go);
-                        addedCount++;
-                    }
+                    var rigidbody = go.AddComponent<Rigidbody>();
+                    rigidbody.isKinematic = true;
+                    rigidbody.useGravity = false;
+                    changed = true;
                 }
 
-                foreach (var controller in root.GetComponentsInChildren<UEDFullController>(true))
+                if (go.GetComponent<VRCObjectSync>() == null)
                 {
-                    if (!processedControllers.Add(controller.gameObject)) continue;
+                    go.AddComponent<VRCObjectSync>();
+                    changed = true;
+                }
 
-                    var go = controller.gameObject;
-                    var changed = false;
+                if (changed)
+                {
+                    EditorUtility.SetDirty(go);
+                    addedCount++;
+                }
+            }
 
-                    if (controller.transform.root.GetComponentInChildren<Animator>(true) == null)
-                    {
-                        controller.transform.root.gameObject.AddComponent<Animator>();
-                        changed = true;
-                        MarkAutoAddedAnimator(controller);
-                    }
+            foreach (var controller in FindInScene<UEDFullController>())
+            {
+                if (!processedControllers.Add(controller.gameObject)) continue;
 
-                    if (EnsureMenuView(controller)) changed = true;
-                    if (EnsurePuppets(controller)) changed = true;
+                var go = controller.gameObject;
+                var changed = false;
 
-                    // Idempotently wires VRCFury controller/menu/param data, then applies whatever
-                    // assets are stored on the controller (VRCFury's or the Expressions section's).
-                    UEDVrcFuryBridge.AutoImportMenu(controller);
-                    UEDVrcFuryBridge.ApplyExpressions(controller);
+                if (controller.transform.root.GetComponentInChildren<Animator>(true) == null)
+                {
+                    controller.transform.root.gameObject.AddComponent<Animator>();
+                    changed = true;
+                    UEDBehaviourInspector.SetMarker(controller, "autoAddedAnimator", true);
+                }
 
-                    // Swaps in a prop-relative copy of the controller (avatar-prop clip paths don't
-                    // resolve against the prop root's own Animator) as a transient generated asset.
-                    try
-                    {
-                        UEDAnimatorRewriter.ApplyForProp(controller);
-                    }
-                    catch (System.Exception e)
-                    {
-                        Debug.LogError($"[UED] Failed to rewrite animator controller for '{controller.name}': {e}", controller);
-                    }
+                if (EnsureMenuView(controller)) changed = true;
+                if (EnsurePuppets(controller)) changed = true;
 
-                    if (changed)
-                    {
-                        EditorUtility.SetDirty(go);
-                        addedCount++;
-                    }
+                // Idempotently wires VRCFury controller/menu/param data, then applies whatever
+                // assets are stored on the controller (VRCFury's or the Expressions section's).
+                UEDVrcFuryBridge.AutoImportMenu(controller);
+                UEDVrcFuryBridge.ApplyExpressions(controller);
+
+                // Swaps in a prop-relative copy of the controller (avatar-prop clip paths don't
+                // resolve against the prop root's own Animator) as a transient generated asset.
+                try
+                {
+                    UEDAnimatorRewriter.ApplyForProp(controller);
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogError($"[UED] Failed to rewrite animator controller for '{controller.name}': {e}", controller);
+                }
+
+                if (changed)
+                {
+                    EditorUtility.SetDirty(go);
+                    addedCount++;
                 }
             }
 
@@ -178,22 +213,15 @@ namespace UdonExpressionDriver.Editor
             if (menuView == null || menuView.objectReferenceValue != null) return false;
 
             const string prefabPath = "Packages/rip.cuebitt.udonexpressiondriver/Runtime/ExpressionMenu/Radial Menu.prefab";
-            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
-            if (prefab == null)
-            {
-                Debug.LogWarning($"[UED] Could not load Radial Menu prefab at '{prefabPath}'.");
-                return false;
-            }
-
-            var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+            var instance = InstantiateAutoLinked(prefabPath, "Expression Menu", controller.transform);
             if (instance == null) return false;
 
-            instance.name = "Expression Menu";
-            instance.transform.SetParent(controller.transform, false);
-            instance.SetActive(false);
-
             var radialMenu = instance.GetComponent<RadialMenu>();
-            if (radialMenu == null) return false;
+            if (radialMenu == null)
+            {
+                Object.DestroyImmediate(instance);
+                return false;
+            }
 
             menuView.objectReferenceValue = radialMenu;
             controllerSerialized.ApplyModifiedProperties();
@@ -202,7 +230,7 @@ namespace UdonExpressionDriver.Editor
             radialSerialized.FindProperty("fullController").objectReferenceValue = controller;
             radialSerialized.ApplyModifiedProperties();
 
-            MarkAutoLinked(radialMenu);
+            UEDBehaviourInspector.MarkAutoLinked(radialMenu);
 
             return true;
         }
@@ -220,53 +248,11 @@ namespace UdonExpressionDriver.Editor
             var axisPuppetProp = controllerSerialized.FindProperty("axisPuppet");
             if (radialPuppetProp == null || axisPuppetProp == null) return false;
 
-            var radial = radialPuppetProp.objectReferenceValue as GameObject;
-            var axis = axisPuppetProp.objectReferenceValue as GameObject;
-
             const string radialPrefabPath = "Packages/rip.cuebitt.udonexpressiondriver/Runtime/ExpressionMenu/Menu Controls/Radial Puppet/Radial Puppet.prefab";
             const string axisPrefabPath = "Packages/rip.cuebitt.udonexpressiondriver/Runtime/ExpressionMenu/Menu Controls/Axis Puppet/Axis Puppet.prefab";
 
-            if (radial == null)
-            {
-                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(radialPrefabPath);
-                if (prefab == null)
-                {
-                    Debug.LogWarning($"[UED] Could not load Radial Puppet prefab at '{radialPrefabPath}'.");
-                }
-                else
-                {
-                    radial = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
-                    if (radial != null)
-                    {
-                        radial.name = "Radial Puppet";
-                        radial.transform.SetParent(controller.transform, false);
-                        radial.SetActive(false);
-                        if (radial.GetComponent<RadialPuppet>() is RadialPuppet puppetBehaviour)
-                            MarkAutoLinked(puppetBehaviour);
-                    }
-                }
-            }
-
-            if (axis == null)
-            {
-                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(axisPrefabPath);
-                if (prefab == null)
-                {
-                    Debug.LogWarning($"[UED] Could not load Axis Puppet prefab at '{axisPrefabPath}'.");
-                }
-                else
-                {
-                    axis = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
-                    if (axis != null)
-                    {
-                        axis.name = "Axis Puppet";
-                        axis.transform.SetParent(controller.transform, false);
-                        axis.SetActive(false);
-                        if (axis.GetComponent<AxisPuppet>() is AxisPuppet puppetBehaviour)
-                            MarkAutoLinked(puppetBehaviour);
-                    }
-                }
-            }
+            var radial = EnsurePuppet(radialPuppetProp, radialPrefabPath, "Radial Puppet", controller);
+            var axis = EnsurePuppet(axisPuppetProp, axisPrefabPath, "Axis Puppet", controller);
 
             var changed = false;
             if (radial != null && radialPuppetProp.objectReferenceValue != radial)
@@ -290,6 +276,38 @@ namespace UdonExpressionDriver.Editor
             return changed;
         }
 
+        /// <summary>Returns the puppet already assigned to the controller, or spawns one if unset.</summary>
+        private static GameObject EnsurePuppet(SerializedProperty prop, string prefabPath, string objectName, UEDFullController controller)
+        {
+            var puppet = prop.objectReferenceValue as GameObject;
+            if (puppet != null) return puppet;
+
+            puppet = InstantiateAutoLinked(prefabPath, objectName, controller.transform);
+            if (puppet != null && puppet.GetComponent<UdonSharpBehaviour>() is UdonSharpBehaviour behaviour)
+                UEDBehaviourInspector.MarkAutoLinked(behaviour);
+
+            return puppet;
+        }
+
+        /// <summary>Instantiates one of the package's prefabs as an inactive child, ready to be auto-linked.</summary>
+        private static GameObject InstantiateAutoLinked(string prefabPath, string objectName, Transform parent)
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+            if (prefab == null)
+            {
+                Debug.LogWarning($"[UED] Could not load prefab at '{prefabPath}'.");
+                return null;
+            }
+
+            var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+            if (instance == null) return null;
+
+            instance.name = objectName;
+            instance.transform.SetParent(parent, false);
+            instance.SetActive(false);
+            return instance;
+        }
+
         /// <summary>Assigns the controller as the puppet's typed handler (idempotent).</summary>
         private static bool LinkPuppetHandler(UdonSharpBehaviour puppet, UEDPuppetHandler controller)
         {
@@ -304,24 +322,20 @@ namespace UdonExpressionDriver.Editor
 
         private static void AutoLinkForwarders()
         {
-            RevertForwarders();
+            TryRevert("leftover forwarders", RevertForwarders);
 
-            var scene = EditorSceneManager.GetActiveScene();
             var processed = new HashSet<GameObject>();
             var totalPhysbone = 0;
             var totalContact = 0;
 
-            foreach (var root in scene.GetRootGameObjects())
+            foreach (var behaviour in FindInScene<UEDBehaviour>())
             {
-                foreach (var behaviour in root.GetComponentsInChildren<UEDBehaviour>(true))
-                {
-                    if (!processed.Add(behaviour.gameObject)) continue;
+                if (!processed.Add(behaviour.gameObject)) continue;
 
-                    var (physboneCount, contactCount) =
-                        UEDBehaviourInspector.LinkChildForwardersAndCount(behaviour.gameObject);
-                    totalPhysbone += physboneCount;
-                    totalContact += contactCount;
-                }
+                var (physboneCount, contactCount) =
+                    UEDBehaviourInspector.LinkChildForwardersAndCount(behaviour.gameObject);
+                totalPhysbone += physboneCount;
+                totalContact += contactCount;
             }
 
             if (totalPhysbone + totalContact > 0)
@@ -330,22 +344,11 @@ namespace UdonExpressionDriver.Editor
 
         private static void RevertForwarders()
         {
-            var scene = EditorSceneManager.GetActiveScene();
-            foreach (var root in scene.GetRootGameObjects())
-            {
-                foreach (var forwarder in root.GetComponentsInChildren<PhysboneForwarder>(true))
-                    if (IsAutoLinked(forwarder)) DestroyForwarder(forwarder);
+            foreach (var forwarder in FindInScene<PhysboneForwarder>())
+                if (UEDBehaviourInspector.IsAutoLinked(forwarder)) DestroyForwarder(forwarder);
 
-                foreach (var forwarder in root.GetComponentsInChildren<ContactForwarder>(true))
-                    if (IsAutoLinked(forwarder)) DestroyForwarder(forwarder);
-            }
-        }
-
-        private static bool IsAutoLinked(UdonSharpBehaviour forwarder)
-        {
-            var serialized = new SerializedObject(forwarder);
-            var property = serialized.FindProperty("autoLinked");
-            return property != null && property.boolValue;
+            foreach (var forwarder in FindInScene<ContactForwarder>())
+                if (UEDBehaviourInspector.IsAutoLinked(forwarder)) DestroyForwarder(forwarder);
         }
 
         private static void DestroyForwarder(UdonSharpBehaviour forwarder)
@@ -353,30 +356,6 @@ namespace UdonExpressionDriver.Editor
             var backing = UdonSharpEditorUtility.GetBackingUdonBehaviour(forwarder);
             if (backing != null) Object.DestroyImmediate(backing);
             Object.DestroyImmediate(forwarder);
-        }
-
-        /// <summary>Flags a behaviour as auto-added so it can be removed again later (survives domain reloads).</summary>
-        private static void MarkAutoLinked(UdonSharpBehaviour behaviour)
-        {
-            var serialized = new SerializedObject(behaviour);
-            var property = serialized.FindProperty("autoLinked");
-            if (property == null) return;
-            property.boolValue = true;
-            serialized.ApplyModifiedProperties();
-        }
-
-        /// <summary>
-        /// Marks the controller as having had its missing Animator auto-added by EnsurePropComponents,
-        /// so RevertAutoAddedAnimators can remove it again when leaving play mode. The marker is a
-        /// serialized field on the controller (survives the play-mode domain reload).
-        /// </summary>
-        private static void MarkAutoAddedAnimator(UEDFullController controller)
-        {
-            var serialized = new SerializedObject(controller);
-            var property = serialized.FindProperty("autoAddedAnimator");
-            if (property == null) return;
-            property.boolValue = true;
-            serialized.ApplyModifiedProperties();
         }
 
         /// <summary>
@@ -387,32 +366,33 @@ namespace UdonExpressionDriver.Editor
         /// </summary>
         private static void RevertAutoAddedAnimators()
         {
-            var scene = EditorSceneManager.GetActiveScene();
             var removed = 0;
 
-            foreach (var root in scene.GetRootGameObjects())
+            foreach (var controller in FindInScene<UEDFullController>())
             {
-                foreach (var controller in root.GetComponentsInChildren<UEDFullController>(true))
+                var serialized = new SerializedObject(controller);
+                var autoAdded = serialized.FindProperty("autoAddedAnimator");
+                if (autoAdded == null || !autoAdded.boolValue) continue;
+
+                var animator = serialized.FindProperty("animator")?.objectReferenceValue as Animator;
+                // The marker is only set when the prop had no Animator anywhere, so any Animator the
+                // controller's hierarchy holds now is the one UED added to the prop root.
+                if (animator == null)
+                    animator = controller.transform.root.GetComponentInChildren<Animator>(true);
+
+                // Destroy the Animator before clearing the field: ApplyModifiedProperties below fires
+                // OnValidate, which would otherwise re-grab the still-present Animator and leave the
+                // field pointing at the just-destroyed component (inspector shows "Missing (Animator)").
+                if (animator != null)
                 {
-                    var serialized = new SerializedObject(controller);
-                    var autoAdded = serialized.FindProperty("autoAddedAnimator");
-                    if (autoAdded == null || !autoAdded.boolValue) continue;
-
-                    var animator = serialized.FindProperty("animator")?.objectReferenceValue as Animator;
-                    if (animator == null)
-                        animator = controller.transform.root.gameObject.GetComponent<Animator>();
-
-                    var animatorProperty = serialized.FindProperty("animator");
-                    if (animatorProperty != null) animatorProperty.objectReferenceValue = null;
-                    autoAdded.boolValue = false;
-                    serialized.ApplyModifiedProperties();
-
-                    if (animator != null)
-                    {
-                        Object.DestroyImmediate(animator);
-                        removed++;
-                    }
+                    Object.DestroyImmediate(animator);
+                    removed++;
                 }
+
+                var animatorProperty = serialized.FindProperty("animator");
+                if (animatorProperty != null) animatorProperty.objectReferenceValue = null;
+                autoAdded.boolValue = false;
+                serialized.ApplyModifiedProperties();
             }
 
             if (removed > 0)
@@ -427,28 +407,21 @@ namespace UdonExpressionDriver.Editor
         /// </summary>
         private static void RevertAutoLinked()
         {
-            var scene = EditorSceneManager.GetActiveScene();
             var marked = new HashSet<GameObject>();
 
-            foreach (var root in scene.GetRootGameObjects())
-            {
-                foreach (var menu in root.GetComponentsInChildren<RadialMenu>(true))
-                    if (menu != null && IsAutoLinked(menu)) marked.Add(menu.gameObject);
+            foreach (var menu in FindInScene<RadialMenu>())
+                if (UEDBehaviourInspector.IsAutoLinked(menu)) marked.Add(menu.gameObject);
 
-                foreach (var puppet in root.GetComponentsInChildren<RadialPuppet>(true))
-                    if (puppet != null && IsAutoLinked(puppet)) marked.Add(puppet.gameObject);
+            foreach (var puppet in FindInScene<RadialPuppet>())
+                if (UEDBehaviourInspector.IsAutoLinked(puppet)) marked.Add(puppet.gameObject);
 
-                foreach (var puppet in root.GetComponentsInChildren<AxisPuppet>(true))
-                    if (puppet != null && IsAutoLinked(puppet)) marked.Add(puppet.gameObject);
-            }
+            foreach (var puppet in FindInScene<AxisPuppet>())
+                if (UEDBehaviourInspector.IsAutoLinked(puppet)) marked.Add(puppet.gameObject);
 
             if (marked.Count == 0) return;
 
-            foreach (var root in scene.GetRootGameObjects())
-            {
-                foreach (var controller in root.GetComponentsInChildren<UEDFullController>(true))
-                    ClearAutoAddedRefs(controller, marked);
-            }
+            foreach (var controller in FindInScene<UEDFullController>())
+                ClearAutoAddedRefs(controller, marked);
 
             foreach (var go in marked)
                 if (go != null) Object.DestroyImmediate(go);

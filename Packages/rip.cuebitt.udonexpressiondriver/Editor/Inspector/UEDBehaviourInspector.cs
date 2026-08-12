@@ -93,5 +93,35 @@ namespace UdonExpressionDriver.Editor
             if (autoProperty != null) autoProperty.boolValue = true;
             serialized.ApplyModifiedProperties();
         }
+
+        /// <summary>Reads a hidden marker field off a tool-managed behaviour (survives domain reloads).</summary>
+        internal static bool GetMarker(UdonSharpBehaviour behaviour, string field)
+        {
+            var serialized = new SerializedObject(behaviour);
+            var property = serialized.FindProperty(field);
+            return property != null && property.boolValue;
+        }
+
+        /// <summary>Sets a hidden marker field on a tool-managed behaviour (survives domain reloads).</summary>
+        internal static void SetMarker(UdonSharpBehaviour behaviour, string field, bool value)
+        {
+            var serialized = new SerializedObject(behaviour);
+            var property = serialized.FindProperty(field);
+            if (property == null) return;
+            property.boolValue = value;
+            serialized.ApplyModifiedProperties();
+        }
+
+        /// <summary>True if the behaviour was added by the auto-linker and can be removed again.</summary>
+        internal static bool IsAutoLinked(UdonSharpBehaviour behaviour)
+        {
+            return GetMarker(behaviour, "autoLinked");
+        }
+
+        /// <summary>Flags a behaviour as auto-linked so it can be reverted after play/build.</summary>
+        internal static void MarkAutoLinked(UdonSharpBehaviour behaviour)
+        {
+            SetMarker(behaviour, "autoLinked", true);
+        }
     }
 }

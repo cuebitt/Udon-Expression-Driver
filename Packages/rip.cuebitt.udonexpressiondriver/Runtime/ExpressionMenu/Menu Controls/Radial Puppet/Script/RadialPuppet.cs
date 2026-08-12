@@ -42,6 +42,9 @@ namespace UdonExpressionDriver
                 this.value = value;
 
                 if (valueLabel != null) valueLabel.text = $"{this.value * 100:F0}%";
+                // TODO: assigning .value fires the wired OnValueChanged (a spurious _OnPuppetRadial
+                // callback on programmatic sets). Switch to SetValueWithoutNotify once its Udon
+                // exposure is confirmed via Tools > UED > Dump Udon Exposure.
                 if (radialSlider != null) radialSlider.value = this.value;
                 if (lowerSlider != null) lowerSlider.value = this.value;
             }
@@ -65,7 +68,7 @@ namespace UdonExpressionDriver
             Label = label;
 
             if (lowerSlider != null)
-                EditorApplication.delayCall += () => { lowerSlider.SetValueWithoutNotify(value); };
+                EditorApplication.delayCall += () => { if (this == null) return; lowerSlider.SetValueWithoutNotify(value); };
         }
 #endif
         

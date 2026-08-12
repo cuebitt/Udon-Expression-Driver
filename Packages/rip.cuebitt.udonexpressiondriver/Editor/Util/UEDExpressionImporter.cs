@@ -35,7 +35,7 @@ namespace UdonExpressionDriver.Editor
             if (controller == null) { Debug.LogError("[UED] No controller to import into."); return; }
             if (menu == null) { Debug.LogError("[UED] Specify an Expressions Menu."); return; }
 
-            // --- Gather parameters (asset first, then menu-embedded + referenced). ---
+            // Gather parameters (asset first, then menu-embedded + referenced).
             var paramNames = new List<string>();
             var paramTypes = new List<int>();
             var paramDefaults = new List<float>();
@@ -63,7 +63,7 @@ namespace UdonExpressionDriver.Editor
             var seenMenus = new HashSet<VRCExpressionsMenu>();
             CollectReferencedParams(menu, seenMenus, paramByName, AddParam);
 
-            // --- Flatten menus. ---
+            // Flatten menus into a flat control list per menu level.
             var menuList = new List<List<ControlDef>>();
             var menuIndexMap = new Dictionary<VRCExpressionsMenu, int>();
             seenMenus.Clear();
@@ -108,7 +108,7 @@ namespace UdonExpressionDriver.Editor
             }
             menuControlStart.Add(controlCount);
 
-            // --- Write into the controller's serialized fields. ---
+            // Write the flattened data into the controller's serialized fields.
             var serialized = new SerializedObject(controller);
             SetStringArray(serialized, "paramNames", paramNames);
             SetIntArray(serialized, "paramTypes", paramTypes);

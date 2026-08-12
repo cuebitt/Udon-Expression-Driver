@@ -107,15 +107,25 @@ namespace UdonExpressionDriver.Editor
 
             EditorGUILayout.HelpBox("Applied automatically in edit mode, play mode, and builds (as a generated, prop-relative copy).", MessageType.Info);
 
-            if (vrcFuryPresent && GUILayout.Button("Re-import from VRCFury"))
-                UEDVrcFuryBridge.ReimportFromVrcFury(controller);
+            if (vrcFuryPresent)
+            {
+                if (GUILayout.Button("Re-import from VRCFury"))
+                    UEDVrcFuryBridge.ReimportFromVrcFury(controller);
+            }
+            else
+            {
+                EditorGUILayout.HelpBox(
+                    "No VRCFury component found on this prop. Configure the fields above manually, or " +
+                    "install VRCFury and add a Full Controller to the prop for one-click import.",
+                    MessageType.Info);
+            }
 
             EndSection();
         }
 
         private static void DrawStatus(UEDFullController controller)
         {
-            var (paramCount, controlCount) = GetDataCounts(controller);
+            var (paramCount, controlCount) = UEDVrcFuryBridge.CountData(controller);
 
             BeginSection("Status");
             EditorGUILayout.LabelField("Data", $"{paramCount} parameter(s), {controlCount} control(s)");
@@ -130,17 +140,6 @@ namespace UdonExpressionDriver.Editor
             }
 
             EndSection();
-        }
-
-        private static (int Params, int Controls) GetDataCounts(UEDFullController controller)
-        {
-            var serialized = new SerializedObject(controller);
-            var paramCount = serialized.FindProperty("paramNames")?.arraySize ?? 0;
-            var menuStart = serialized.FindProperty("menuControlStart");
-            var controlCount = menuStart != null && menuStart.arraySize > 0
-                ? menuStart.GetArrayElementAtIndex(menuStart.arraySize - 1).intValue
-                : 0;
-            return (paramCount, controlCount);
         }
     }
 }

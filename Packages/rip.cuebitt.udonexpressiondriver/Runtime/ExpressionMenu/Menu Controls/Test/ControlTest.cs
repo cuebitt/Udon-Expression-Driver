@@ -4,6 +4,8 @@ using UnityEngine;
 
 namespace UdonExpressionDriver
 {
+    // Test harness that prints the puppet control values into TMP text so the
+    // controls can be verified without a full menu setup.
     [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
     public class ControlTest : UEDPuppetHandler
     {

@@ -64,6 +64,8 @@ namespace UdonExpressionDriver
         {
             if (propPickup == null) propPickup = GetComponent<VRCPickup>();
             if (propRigidbody == null) propRigidbody = GetComponent<Rigidbody>();
+            // TODO: only root-level colliders are toggled while worn; switch to
+            // GetComponentsInChildren if child colliders should be disabled too.
             _colliders = GetComponents<Collider>();
 
             _hasAttachPoint = attachPoint != null;
@@ -115,6 +117,8 @@ namespace UdonExpressionDriver
             if (_wearer == null || !_wearer.IsValid()) return;
             if (!Networking.IsOwner(gameObject)) return;
 
+            // The wearer's bone drives the prop transform; only the owner writes so
+            // VRC_ObjectSync stays authoritative for everyone else.
             var boneRotation = _wearer.GetBoneRotation(targetBone);
             var bonePosition = _wearer.GetBonePosition(targetBone);
 

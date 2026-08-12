@@ -23,213 +23,270 @@ namespace UdonExpressionDriver.Bootstrapper
             var asm = AssemblyDefinition.ReadAssembly(inputPath, readerParams);
             var module = asm.MainModule;
 
-            // normalization sets
-            var keepTypes = new HashSet<string>(StringComparer.Ordinal);
-            var keepMembers = new HashSet<string>(StringComparer.Ordinal); // method/field fullnames
-
-            // Seed queue: treat whitelist strings as either type fullnames or member fullnames.
-            var workQueue = new Queue<MemberReference>();
-            foreach (var w in whitelist)
-            {
-                // try type first
-                var tdef = ResolveType(w);
-                if (tdef != null)
-                {
-                    keepTypes.Add(tdef.FullName);
-                    workQueue.Enqueue(tdef);
-                    continue;
-                }
-
-                var mref = ResolveMember(w);
-                if (mref != null)
-                {
-                    keepMembers.Add(mref.FullName);
-                    // ensure type containing this member is kept
-                    if (mref.DeclaringType != null) keepTypes.Add(mref.DeclaringType.FullName);
-                    workQueue.Enqueue(mref);
-                    continue;
-                }
-
-                // If nothing resolves, try to match by simple type name (best-effort)
-                var alt = module.Types.SelectMany(FlattenAll).FirstOrDefault(x => x.Name == w || x.FullName == w);
-                if (alt != null)
-                {
-                    keepTypes.Add(alt.FullName);
-                    workQueue.Enqueue(alt);
-                }
-
-                // unknown name; ignore (user can supply exact names)
-            }
-
-            // BFS: for each kept member/type, find all referenced type/member defs in same module
-            while (workQueue.Count > 0)
-            {
-                var item = workQueue.Dequeue();
-                if (item is TypeDefinition td)
-                {
-                    // record
-                    if (!keepTypes.Add(td.FullName))
-                    {
-                        /* was already present */
-                    }
-
-                    // base type
-                    if (td.BaseType != null) TryAddTypeReference(td.BaseType, workQueue, keepTypes);
-
-                    // interfaces
-                    foreach (var iface in td.Interfaces) TryAddTypeReference(iface.InterfaceType, workQueue, keepTypes);
-
-                    // fields
-                    foreach (var f in td.Fields)
-                    {
-                        TryAddTypeReference(f.FieldType, workQueue, keepTypes);
-                        if (keepMembers.Add(f.FullName)) workQueue.Enqueue(f);
-                    }
-
-                    // properties/events: keep their types and accessors
-                    foreach (var p in td.Properties)
-                    {
-                        TryAddTypeReference(p.PropertyType, workQueue, keepTypes);
-                        if (p.GetMethod != null) TryAddMemberRef(p.GetMethod, workQueue, keepMembers);
-                        if (p.SetMethod != null) TryAddMemberRef(p.SetMethod, workQueue, keepMembers);
-                        if (keepMembers.Add(p.FullName)) workQueue.Enqueue(p);
-                    }
-
-                    foreach (var e in td.Events)
-                    {
-                        TryAddTypeReference(e.EventType, workQueue, keepTypes);
-                        if (e.AddMethod != null) TryAddMemberRef(e.AddMethod, workQueue, keepMembers);
-                        if (e.RemoveMethod != null) TryAddMemberRef(e.RemoveMethod, workQueue, keepMembers);
-                        if (keepMembers.Add(e.FullName)) workQueue.Enqueue(e);
-                    }
-
-                    // nested types
-                    foreach (var nt in td.NestedTypes)
-                        if (keepTypes.Add(nt.FullName))
-                            workQueue.Enqueue(nt);
-
-                    // methods/signatures
-                    foreach (var m in td.Methods)
-                    {
-                        TryAddMethodSignatureReferences(m, workQueue, keepTypes, keepMembers);
-                        if (keepMembers.Add(m.FullName)) workQueue.Enqueue(m);
-                    }
-                }
-                else if (item is MethodDefinition md)
-                {
-                    // return type + params
-                    TryAddTypeReference(md.ReturnType, workQueue, keepTypes);
-                    foreach (var p in md.Parameters) TryAddTypeReference(p.ParameterType, workQueue, keepTypes);
-
-                    // custom attrs on method
-                    foreach (var ca in md.CustomAttributes) TryAddTypeReference(ca.AttributeType, workQueue, keepTypes);
-
-                    // method body instructions -> references
-                    if (md.HasBody)
-                    {
-                        foreach (var instr in md.Body.Instructions)
-                        {
-                            var op = instr.Operand;
-                            switch (op)
-                            {
-                                case MethodReference mr: TryAddMemberRef(mr, workQueue, keepMembers); break;
-                                case FieldReference fr: TryAddMemberRef(fr, workQueue, keepMembers); break;
-                                case TypeReference tr: TryAddTypeReference(tr, workQueue, keepTypes); break;
-                            }
-                        }
-
-                        // exception handlers' catch types
-                        foreach (var eh in md.Body.ExceptionHandlers)
-                            if (eh.CatchType != null)
-                                TryAddTypeReference(eh.CatchType, workQueue, keepTypes);
-                    }
-                }
-                else if (item is FieldDefinition fd)
-                {
-                    TryAddTypeReference(fd.FieldType, workQueue, keepTypes);
-                    foreach (var ca in fd.CustomAttributes) TryAddTypeReference(ca.AttributeType, workQueue, keepTypes);
-                }
-                else if (item is PropertyDefinition pd)
-                {
-                    TryAddTypeReference(pd.PropertyType, workQueue, keepTypes);
-                    if (pd.GetMethod != null) TryAddMemberRef(pd.GetMethod, workQueue, keepMembers);
-                    if (pd.SetMethod != null) TryAddMemberRef(pd.SetMethod, workQueue, keepMembers);
-                }
-                else if (item is EventDefinition ed)
-                {
-                    TryAddTypeReference(ed.EventType, workQueue, keepTypes);
-                    if (ed.AddMethod != null) TryAddMemberRef(ed.AddMethod, workQueue, keepMembers);
-                    if (ed.RemoveMethod != null) TryAddMemberRef(ed.RemoveMethod, workQueue, keepMembers);
-                }
-                else if (item is MethodReference mref)
-                {
-                    // try to resolve to definition (if in same module)
-                    var def = TryResolveMethodDefinition(mref);
-                    if (def != null)
-                    {
-                        if (keepMembers.Add(def.FullName)) workQueue.Enqueue(def);
-                        if (def.DeclaringType != null && keepTypes.Add(def.DeclaringType.FullName))
-                            workQueue.Enqueue(def.DeclaringType);
-                    }
-
-                    // add signature types
-                    TryAddTypeReference(mref.ReturnType, workQueue, keepTypes);
-                    foreach (var p in mref.Parameters) TryAddTypeReference(p.ParameterType, workQueue, keepTypes);
-                }
-                else if (item is FieldReference fref)
-                {
-                    var fdef = TryResolveFieldDefinition(fref);
-                    if (fdef != null)
-                    {
-                        if (keepMembers.Add(fdef.FullName)) workQueue.Enqueue(fdef);
-                        if (fdef.DeclaringType != null && keepTypes.Add(fdef.DeclaringType.FullName))
-                            workQueue.Enqueue(fdef.DeclaringType);
-                    }
-
-                    TryAddTypeReference(fref.FieldType, workQueue, keepTypes);
-                }
-            }
-
-            // Now remove anything not in keepTypes / keepMembers
-            // Remove members from kept types; remove entire types otherwise.
-            var allTypes = module.Types.SelectMany(FlattenAll).ToList();
-            foreach (var t in allTypes)
-            {
-                if (!keepTypes.Contains(t.FullName))
-                {
-                    // remove top-level types only at parent container
-                    if (t.IsNested)
-                    {
-                        // nested type removal: remove from declaring type
-                        var parent = t.DeclaringType;
-                        parent.NestedTypes.Remove(t);
-                    }
-                    else
-                    {
-                        module.Types.Remove(t);
-                    }
-
-                    continue;
-                }
-
-                // keep the type, prune members not in keepMembers
-                t.Methods.RemoveWhere(m => !keepMembers.Contains(m.FullName) && !IsSpecialKeepMethod(m));
-                t.Fields.RemoveWhere(f => !keepMembers.Contains(f.FullName));
-                t.Properties.RemoveWhere(p => !keepMembers.Contains(p.FullName));
-                t.Events.RemoveWhere(e => !keepMembers.Contains(e.FullName));
-                // Note: keep nested types that are in keepTypes (handled above)
-            }
+            var graph = new KeepGraph(module);
+            graph.Seed(whitelist);
+            graph.Walk();
+            graph.Prune();
 
             // Final save (no symbols written -> PDB removed)
             var writerParams = new WriterParameters { WriteSymbols = false };
             asm.Write(outputPath, writerParams);
-            return;
+        }
 
-            // Resolve member full name to a definition if possible
-            MemberReference ResolveMember(string memberFullName)
+        /// <summary>
+        /// Computes the keep set by walking the module's reference graph from the whitelist,
+        /// then strips everything that isn't kept.
+        /// </summary>
+        private class KeepGraph
+        {
+            private readonly ModuleDefinition _module;
+            private readonly HashSet<string> _keepTypes = new HashSet<string>(StringComparer.Ordinal);
+            private readonly HashSet<string> _keepMembers = new HashSet<string>(StringComparer.Ordinal);
+            private readonly Queue<MemberReference> _workQueue = new Queue<MemberReference>();
+
+            public KeepGraph(ModuleDefinition module)
             {
-                // Try methods/fields by matching FullName
-                foreach (var t in module.Types.SelectMany(Flatten))
+                _module = module;
+            }
+
+            // Seed the queue from the whitelist: each entry is tried as a type full name,
+            // then a member full name, then as a simple type name (best effort).
+            public void Seed(IEnumerable<string> whitelist)
+            {
+                foreach (var w in whitelist)
+                {
+                    var tdef = ResolveType(w);
+                    if (tdef != null)
+                    {
+                        KeepType(tdef);
+                        continue;
+                    }
+
+                    var mref = ResolveMember(w);
+                    if (mref != null)
+                    {
+                        _keepMembers.Add(mref.FullName);
+                        // Keep the declaring type but only the referenced member (its other
+                        // members stay unreachable unless the graph pulls them in).
+                        if (mref.DeclaringType != null)
+                            _keepTypes.Add(mref.DeclaringType.FullName);
+                        _workQueue.Enqueue(mref);
+                        continue;
+                    }
+
+                    var alt = AllTypes().FirstOrDefault(x => x.Name == w || x.FullName == w);
+                    if (alt != null) KeepType(alt);
+                }
+            }
+
+            // BFS over every kept type/member: each one pulls in the types and members it
+            // references, transitively, until the whole reachable graph is recorded.
+            public void Walk()
+            {
+                while (_workQueue.Count > 0)
+                {
+                    var item = _workQueue.Dequeue();
+
+                    switch (item)
+                    {
+                        case TypeDefinition td: WalkType(td); break;
+                        case MethodDefinition md: WalkMethod(md); break;
+                        case FieldDefinition fd: WalkField(fd); break;
+                        case PropertyDefinition pd: WalkProperty(pd); break;
+                        case EventDefinition ed: WalkEvent(ed); break;
+                        case MethodReference mref: WalkMethodReference(mref); break;
+                        case FieldReference fref: WalkFieldReference(fref); break;
+                    }
+                }
+            }
+
+            // Removes types not in the keep set, and prunes the kept types' members.
+            public void Prune()
+            {
+                var allTypes = AllTypes().ToList();
+                foreach (var t in allTypes)
+                {
+                    if (!_keepTypes.Contains(t.FullName))
+                    {
+                        if (t.IsNested)
+                            t.DeclaringType.NestedTypes.Remove(t);
+                        else
+                            _module.Types.Remove(t);
+                        continue;
+                    }
+
+                    t.Methods.RemoveWhere(m => !_keepMembers.Contains(m.FullName) && !IsSpecialKeepMethod(m));
+                    t.Fields.RemoveWhere(f => !_keepMembers.Contains(f.FullName));
+                    t.Properties.RemoveWhere(p => !_keepMembers.Contains(p.FullName));
+                    t.Events.RemoveWhere(e => !_keepMembers.Contains(e.FullName));
+                }
+            }
+
+            private void KeepType(TypeDefinition td)
+            {
+                if (_keepTypes.Add(td.FullName))
+                    _workQueue.Enqueue(td);
+            }
+
+            private void WalkType(TypeDefinition td)
+            {
+                if (td.BaseType != null) AddTypeReference(td.BaseType);
+                foreach (var iface in td.Interfaces) AddTypeReference(iface.InterfaceType);
+
+                foreach (var f in td.Fields)
+                {
+                    AddTypeReference(f.FieldType);
+                    if (_keepMembers.Add(f.FullName)) _workQueue.Enqueue(f);
+                }
+
+                foreach (var p in td.Properties)
+                {
+                    AddTypeReference(p.PropertyType);
+                    AddMemberReference(p.GetMethod);
+                    AddMemberReference(p.SetMethod);
+                    if (_keepMembers.Add(p.FullName)) _workQueue.Enqueue(p);
+                }
+
+                foreach (var e in td.Events)
+                {
+                    AddTypeReference(e.EventType);
+                    AddMemberReference(e.AddMethod);
+                    AddMemberReference(e.RemoveMethod);
+                    if (_keepMembers.Add(e.FullName)) _workQueue.Enqueue(e);
+                }
+
+                foreach (var nt in td.NestedTypes)
+                    KeepType(nt);
+
+                foreach (var m in td.Methods)
+                {
+                    AddMethodSignature(m);
+                    if (_keepMembers.Add(m.FullName)) _workQueue.Enqueue(m);
+                }
+            }
+
+            private void WalkMethod(MethodDefinition md)
+            {
+                AddTypeReference(md.ReturnType);
+                foreach (var p in md.Parameters) AddTypeReference(p.ParameterType);
+                foreach (var ca in md.CustomAttributes) AddTypeReference(ca.AttributeType);
+                ScanMethodBody(md);
+            }
+
+            // Records every type/member referenced by a method's body (operands + catch types).
+            private void ScanMethodBody(MethodDefinition md)
+            {
+                if (!md.HasBody) return;
+
+                foreach (var instr in md.Body.Instructions)
+                {
+                    switch (instr.Operand)
+                    {
+                        case MethodReference mr: AddMemberReference(mr); break;
+                        case FieldReference fr: AddMemberReference(fr); break;
+                        case TypeReference tr: AddTypeReference(tr); break;
+                    }
+                }
+
+                foreach (var eh in md.Body.ExceptionHandlers)
+                    if (eh.CatchType != null)
+                        AddTypeReference(eh.CatchType);
+            }
+
+            private void WalkField(FieldDefinition fd)
+            {
+                AddTypeReference(fd.FieldType);
+                foreach (var ca in fd.CustomAttributes) AddTypeReference(ca.AttributeType);
+            }
+
+            private void WalkProperty(PropertyDefinition pd)
+            {
+                AddTypeReference(pd.PropertyType);
+                AddMemberReference(pd.GetMethod);
+                AddMemberReference(pd.SetMethod);
+            }
+
+            private void WalkEvent(EventDefinition ed)
+            {
+                AddTypeReference(ed.EventType);
+                AddMemberReference(ed.AddMethod);
+                AddMemberReference(ed.RemoveMethod);
+            }
+
+            private void WalkMethodReference(MethodReference mref)
+            {
+                var def = ResolveMethodDefinition(mref);
+                if (def != null)
+                {
+                    if (_keepMembers.Add(def.FullName)) _workQueue.Enqueue(def);
+                    if (def.DeclaringType != null && _keepTypes.Add(def.DeclaringType.FullName))
+                        _workQueue.Enqueue(def.DeclaringType);
+                }
+
+                AddTypeReference(mref.ReturnType);
+                foreach (var p in mref.Parameters) AddTypeReference(p.ParameterType);
+            }
+
+            private void WalkFieldReference(FieldReference fref)
+            {
+                var def = ResolveFieldDefinition(fref);
+                if (def != null)
+                {
+                    if (_keepMembers.Add(def.FullName)) _workQueue.Enqueue(def);
+                    if (def.DeclaringType != null && _keepTypes.Add(def.DeclaringType.FullName))
+                        _workQueue.Enqueue(def.DeclaringType);
+                }
+
+                AddTypeReference(fref.FieldType);
+            }
+
+            private void AddTypeReference(TypeReference tr)
+            {
+                if (tr == null) return;
+                var resolved = ResolveTypeReference(tr);
+                if (resolved != null && _keepTypes.Add(resolved.FullName))
+                    _workQueue.Enqueue(resolved);
+            }
+
+            private void AddMemberReference(MemberReference mr)
+            {
+                if (mr == null) return;
+
+                if (mr is MethodReference mref)
+                {
+                    var def = ResolveMethodDefinition(mref);
+                    if (def != null && _keepMembers.Add(def.FullName)) _workQueue.Enqueue(def);
+                    if (def?.DeclaringType != null && _keepTypes.Add(def.DeclaringType.FullName))
+                        _workQueue.Enqueue(def.DeclaringType);
+                }
+                else if (mr is FieldReference fref)
+                {
+                    var def = ResolveFieldDefinition(fref);
+                    if (def != null && _keepMembers.Add(def.FullName)) _workQueue.Enqueue(def);
+                    if (def?.DeclaringType != null && _keepTypes.Add(def.DeclaringType.FullName))
+                        _workQueue.Enqueue(def.DeclaringType);
+                }
+            }
+
+            private void AddMethodSignature(MethodDefinition methodDef)
+            {
+                AddTypeReference(methodDef.ReturnType);
+                foreach (var p in methodDef.Parameters) AddTypeReference(p.ParameterType);
+                foreach (var ca in methodDef.CustomAttributes) AddTypeReference(ca.AttributeType);
+                ScanMethodBody(methodDef);
+            }
+
+            // Try type full name first, then a scan across all (nested) types in the module.
+            private TypeDefinition ResolveType(string fullName)
+            {
+                var t = _module.GetType(fullName);
+                return t ?? AllTypes().FirstOrDefault(x => x.FullName == fullName);
+            }
+
+            // Member full name to a definition if possible.
+            private MemberReference ResolveMember(string memberFullName)
+            {
+                foreach (var t in AllTypes())
                 {
                     var md = t.Methods.FirstOrDefault(m => m.FullName == memberFullName);
                     if (md != null) return md;
@@ -242,94 +299,30 @@ namespace UdonExpressionDriver.Bootstrapper
                 }
 
                 return null;
-
-                IEnumerable<TypeDefinition> Flatten(TypeDefinition td)
-                {
-                    yield return td;
-                    foreach (var nt in td.NestedTypes)
-                    foreach (var z in Flatten(nt))
-                        yield return z;
-                }
             }
 
-            // Helper to resolve type by full name (search nested types too)
-            TypeDefinition ResolveType(string fullName)
-            {
-                // Module.GetType works for top-level and nested with '/' separators in Cecil fullnames
-                var t = module.GetType(fullName);
-                return t ??
-                       // fallback scan
-                       module.Types.SelectMany(Flatten).FirstOrDefault(x => x.FullName == fullName);
-
-                IEnumerable<TypeDefinition> Flatten(TypeDefinition td)
-                {
-                    yield return td;
-                    foreach (var z in td.NestedTypes.SelectMany(Flatten))
-                        yield return z;
-                }
-            }
-
-            // helpers
-            static IEnumerable<TypeDefinition> FlattenAll(TypeDefinition td)
-            {
-                yield return td;
-                foreach (var nt in td.NestedTypes)
-                foreach (var z in FlattenAll(nt))
-                    yield return z;
-            }
-
-            // try add type reference if it resolves to a type in this module
-            void TryAddTypeReference(TypeReference tr, Queue<MemberReference> q, HashSet<string> keepT)
-            {
-                if (tr == null) return;
-                var resolved = ResolveTypeReference(tr);
-                if (resolved != null && keepT.Add(resolved.FullName)) q.Enqueue(resolved);
-            }
-
-            // try add a member reference (MethodReference / FieldReference)
-            void TryAddMemberRef(MemberReference mr, Queue<MemberReference> q, HashSet<string> keepM)
-            {
-                if (mr == null) return;
-                // try to resolve to definition in same module
-                if (mr is MethodReference mref)
-                {
-                    var def = TryResolveMethodDefinition(mref);
-                    if (def != null && keepM.Add(def.FullName)) q.Enqueue(def);
-                    // also add declaring type
-                    if (def?.DeclaringType != null && keepTypes.Add(def.DeclaringType.FullName))
-                        q.Enqueue(def.DeclaringType);
-                }
-                else if (mr is FieldReference fref)
-                {
-                    var fdef = TryResolveFieldDefinition(fref);
-                    if (fdef != null && keepM.Add(fdef.FullName)) q.Enqueue(fdef);
-                    if (fdef?.DeclaringType != null && keepTypes.Add(fdef.DeclaringType.FullName))
-                        q.Enqueue(fdef.DeclaringType);
-                }
-            }
-
-            TypeDefinition ResolveTypeReference(TypeReference tr)
+            private TypeDefinition ResolveTypeReference(TypeReference tr)
             {
                 try
                 {
                     var resolved = tr.Resolve();
-                    // ensure it's from this module (assembly)
-                    if (resolved != null && resolved.Module == module) return resolved;
+                    // Only follow references that live in the assembly we're stripping.
+                    if (resolved != null && resolved.Module == _module) return resolved;
                 }
                 catch
                 {
-                    // ignored
+                    // ignored; unresolved refs (e.g. cross-assembly) are simply not followed
                 }
 
                 return null;
             }
 
-            MethodDefinition TryResolveMethodDefinition(MethodReference mr)
+            private MethodDefinition ResolveMethodDefinition(MethodReference mr)
             {
                 try
                 {
                     var resolved = mr.Resolve();
-                    if (resolved != null && resolved.Module == module) return resolved;
+                    if (resolved != null && resolved.Module == _module) return resolved;
                 }
                 catch
                 {
@@ -339,12 +332,12 @@ namespace UdonExpressionDriver.Bootstrapper
                 return null;
             }
 
-            FieldDefinition TryResolveFieldDefinition(FieldReference fr)
+            private FieldDefinition ResolveFieldDefinition(FieldReference fr)
             {
                 try
                 {
                     var resolved = fr.Resolve();
-                    if (resolved != null && resolved.Module == module) return resolved;
+                    if (resolved != null && resolved.Module == _module) return resolved;
                 }
                 catch
                 {
@@ -354,30 +347,24 @@ namespace UdonExpressionDriver.Bootstrapper
                 return null;
             }
 
-            void TryAddMethodSignatureReferences(MethodDefinition methodDef, Queue<MemberReference> q,
-                HashSet<string> keepT,
-                HashSet<string> keepM)
+            private IEnumerable<TypeDefinition> AllTypes()
             {
-                TryAddTypeReference(methodDef.ReturnType, q, keepT);
-                foreach (var p in methodDef.Parameters) TryAddTypeReference(p.ParameterType, q, keepT);
-                foreach (var ca in methodDef.CustomAttributes) TryAddTypeReference(ca.AttributeType, q, keepT);
-                // if method has body, inspect operands
-                if (!methodDef.HasBody) return;
-                foreach (var instr in methodDef.Body.Instructions)
-                {
-                    var op = instr.Operand;
-                    if (op is MethodReference mref) TryAddMemberRef(mref, q, keepM);
-                    else if (op is FieldReference fref) TryAddMemberRef(fref, q, keepM);
-                    else if (op is TypeReference tr) TryAddTypeReference(tr, q, keepT);
-                }
+                return _module.Types.SelectMany(FlattenNested);
             }
 
-            bool IsSpecialKeepMethod(MethodDefinition m)
+            private static IEnumerable<TypeDefinition> FlattenNested(TypeDefinition td)
             {
-                // keep .ctor static ctor .cctor if they are referenced, but if not referenced they're removable.
-                // keep .cctor if it has ModuleInitializer attribute? (best-effort: keep static ctor)
-                if (m.IsConstructor && m.IsStatic) return true; // safer to keep static ctors
-                return false;
+                yield return td;
+                foreach (var nested in td.NestedTypes)
+                    foreach (var z in FlattenNested(nested))
+                        yield return z;
+            }
+
+            // Keep static constructors even when nothing references them; .cctor blocks
+            // can have side effects a stripped type may rely on.
+            private static bool IsSpecialKeepMethod(MethodDefinition m)
+            {
+                return m.IsConstructor && m.IsStatic;
             }
         }
     }

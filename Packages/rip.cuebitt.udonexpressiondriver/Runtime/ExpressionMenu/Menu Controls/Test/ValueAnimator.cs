@@ -3,6 +3,8 @@ using UnityEngine;
 
 namespace UdonExpressionDriver
 {
+    // Test helper that drives the puppet controls on a loop so their visuals can be
+    // checked in ClientSim without a hand on the sliders.
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     public class ValueAnimator : UdonSharpBehaviour
     {

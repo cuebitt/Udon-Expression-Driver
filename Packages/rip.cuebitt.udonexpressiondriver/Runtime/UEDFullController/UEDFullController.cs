@@ -92,11 +92,29 @@ namespace UdonExpressionDriver
 
         private void Start()
         {
+            _EnsureArrays();
+            _InitParamSlots();
+
+            _ApplyAllToAnimator();
+            _RefreshMenuView();
+
+            if (radialPuppet != null) radialPuppet.SetActive(false);
+            if (axisPuppet != null) axisPuppet.SetActive(false);
+        }
+
+        // A half-imported prop can leave these null; treat missing arrays as empty.
+        private void _EnsureArrays()
+        {
             if (paramNames == null) paramNames = new string[0];
             if (paramTypes == null) paramTypes = new int[0];
             if (paramDefaults == null) paramDefaults = new float[0];
             if (paramSynced == null) paramSynced = new bool[0];
+        }
 
+        // Splits params into synced (owner-written, replicated) and local slots, then caches
+        // their Animator hashes so the per-frame write path is pure array reads.
+        private void _InitParamSlots()
+        {
             var count = paramNames.Length;
             var syncedCount = 0;
             for (var i = 0; i < count; i++)
@@ -132,12 +150,6 @@ namespace UdonExpressionDriver
                     localSlot++;
                 }
             }
-
-            _ApplyAllToAnimator();
-            _RefreshMenuView();
-
-            if (radialPuppet != null) radialPuppet.SetActive(false);
-            if (axisPuppet != null) axisPuppet.SetActive(false);
         }
 
         public override void OnDeserialization()
@@ -479,15 +491,7 @@ namespace UdonExpressionDriver
 
         private void _WritePuppetSubParam(int index, float value)
         {
-            var flat = _activePuppetFlat;
-            if (flat < 0 || controlSubParamStart == null || controlSubParams == null) return;
-            if (flat >= controlSubParamStart.Length) return;
-            if (index >= _PuppetSubParamCount(flat)) return;
-
-            var start = controlSubParamStart[flat];
-            if (start < 0 || start + index >= controlSubParams.Length) return;
-
-            var param = controlSubParams[start + index];
+            var param = _PuppetSubParam(_activePuppetFlat, index);
             if (param >= 0) _SetParam(param, value);
         }
 
@@ -540,6 +544,8 @@ namespace UdonExpressionDriver
             return controlSubmenuIndex != null && flat < controlSubmenuIndex.Length ? controlSubmenuIndex[flat] : -1;
         }
 
+        // Pushes every param's current value into the Animator. Used on start and whenever a
+        // sync arrives so remote clients mirror the owner's values.
         private void _ApplyAllToAnimator()
         {
             if (animator == null || paramNames == null) return;

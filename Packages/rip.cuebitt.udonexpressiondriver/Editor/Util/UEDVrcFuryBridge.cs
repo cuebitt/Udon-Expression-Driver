@@ -223,7 +223,8 @@ namespace UdonExpressionDriver.Editor
             if (changed) serialized.ApplyModifiedProperties();
         }
 
-        private static bool NeedsImport(UEDFullController controller, VRCExpressionsMenu menu, VRCExpressionParameters parameters)
+        /// <summary>Counts the params and controls currently baked into the controller's data arrays.</summary>
+        public static (int Params, int Controls) CountData(UEDFullController controller)
         {
             var serialized = new SerializedObject(controller);
             var paramCount = serialized.FindProperty("paramNames")?.arraySize ?? 0;
@@ -231,6 +232,12 @@ namespace UdonExpressionDriver.Editor
             var controlCount = menuStart != null && menuStart.arraySize > 0
                 ? menuStart.GetArrayElementAtIndex(menuStart.arraySize - 1).intValue
                 : 0;
+            return (paramCount, controlCount);
+        }
+
+        private static bool NeedsImport(UEDFullController controller, VRCExpressionsMenu menu, VRCExpressionParameters parameters)
+        {
+            var (paramCount, controlCount) = CountData(controller);
 
             var expectedParams = CountParams(menu, parameters);
             var expectedControls = CountControls(menu);

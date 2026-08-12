@@ -1,5 +1,4 @@
-﻿using System;
-using TMPro;
+﻿using TMPro;
 using UdonSharp;
 using UnityEngine;
 using UnityEngine.UI;
@@ -71,27 +70,30 @@ namespace UdonExpressionDriver
             set => axisPuppetType = value;
         }
 
+        // Always normalize to 4 slots so index math below is safe. A 2-axis puppet only
+        // shows the first two and clears the others, so no stale text lingers after switching.
         public string[] AxisLabels
         {
             get => axisLabels;
             set
             {
-                axisLabels = new string[4];
-                for (var i = 0; i < 4; i++) axisLabels[i] = ""; // ensure there are always 4 strings in the array
-
-                for (var i = 0; i < Math.Min(value.Length, 4); i++) axisLabels[i] = value[i];
-
-                if (AxisPuppetType == AxisPuppetType.Four)
+                var copy = new string[4];
+                if (value != null)
                 {
-                    if (leftAxisLabel != null) leftAxisLabel.text = axisLabels[0];
-                    if (rightAxisLabel != null) rightAxisLabel.text = axisLabels[1];
-                    if (bottomAxisLabel != null) bottomAxisLabel.text = axisLabels[2];
-                    if (topAxisLabel != null) topAxisLabel.text = axisLabels[3];
+                    for (var i = 0; i < 4 && i < value.Length; i++)
+                        copy[i] = value[i];
                 }
-                else
+                axisLabels = copy;
+
+                if (leftAxisLabel != null) leftAxisLabel.text = axisLabels[0];
+                if (rightAxisLabel != null) rightAxisLabel.text = axisLabels[1];
+                if (bottomAxisLabel != null) bottomAxisLabel.text = axisLabels[2];
+                if (topAxisLabel != null) topAxisLabel.text = axisLabels[3];
+
+                if (AxisPuppetType == AxisPuppetType.Two)
                 {
-                    if (rightAxisLabel != null) rightAxisLabel.text = axisLabels[0];
-                    if (topAxisLabel != null) topAxisLabel.text = axisLabels[1];
+                    if (leftAxisLabel != null) leftAxisLabel.text = "";
+                    if (bottomAxisLabel != null) bottomAxisLabel.text = "";
                 }
             }
         }
@@ -101,18 +103,18 @@ namespace UdonExpressionDriver
             get => puppetValue;
             set
             {
+                // Clamp once and use the clamped value everywhere so the pointer and
+                // the sliders always agree (the pointer was using the raw input before).
                 var pv = new Vector2(Mathf.Clamp(value.x, 0f, 1f), Mathf.Clamp(value.y, 0f, 1f));
                 puppetValue = pv;
-                
-                // Set pointer value
-                var newPos = new Vector3(_valuePanelSize.x * value.x, _valuePanelSize.y * value.y, 0);
-                newPos -= new Vector3(_valuePanelSize.x * 0.5f, _valuePanelSize.y * 0.5f, 0);
 
-                ((RectTransform)valuePointer.transform).localPosition = newPos;
-                
-                // Set slider values
-                xAxisSlider.value = pv.x;
-                yAxisSlider.value = pv.y;
+                _PositionPointer(pv, _valuePanelSize);
+
+                // TODO: assigning .value fires the wired OnValueChanged (a spurious puppet
+                // callback on programmatic sets). Switch to SetValueWithoutNotify once its
+                // Udon exposure is confirmed via Tools > UED > Dump Udon Exposure.
+                if (xAxisSlider != null) xAxisSlider.value = pv.x;
+                if (yAxisSlider != null) yAxisSlider.value = pv.y;
             }
         }
 
@@ -121,49 +123,32 @@ namespace UdonExpressionDriver
             if (valuePanel != null) _valuePanelSize = valuePanel.sizeDelta;
         }
 
+        // Moves the value pointer inside the panel. Panel size comes from _valuePanelSize at
+        // runtime and straight from sizeDelta in OnValidate (before Start has cached it).
+        private void _PositionPointer(Vector2 value, Vector2 panelSize)
+        {
+            if (valuePointer == null) return;
+
+            var newPos = new Vector3(panelSize.x * value.x, panelSize.y * value.y, 0f);
+            newPos -= new Vector3(panelSize.x * 0.5f, panelSize.y * 0.5f, 0f);
+            valuePointer.localPosition = newPos;
+        }
 
 #if UNITY_EDITOR && !COMPILER_UDONSHARP
         public void OnValidate()
         {
             Label = label;
+            AxisLabels = axisLabels;
 
-            var axisLabelsCopy = new string[4];
-            for (var i = 0; i < axisLabels.Length; i++) axisLabelsCopy[i] = axisLabels[i];
+            if (valuePanel != null)
+                _PositionPointer(puppetValue, valuePanel.sizeDelta);
 
-            if (axisLabelsCopy.Length < 4)
-                for (var i = axisLabelsCopy.Length; i < 4; i++)
-                    axisLabelsCopy[i] = "";
-
-            if (AxisPuppetType == AxisPuppetType.Four)
-            {
-                if (leftAxisLabel != null) leftAxisLabel.text = axisLabelsCopy[0];
-                if (rightAxisLabel != null) rightAxisLabel.text = axisLabelsCopy[1];
-                if (bottomAxisLabel != null) bottomAxisLabel.text = axisLabelsCopy[2];
-                if (topAxisLabel != null) topAxisLabel.text = axisLabelsCopy[3];
-            }
-            else if (AxisPuppetType == AxisPuppetType.Two)
-            {
-                if (rightAxisLabel != null) rightAxisLabel.text = axisLabelsCopy[0];
-                if (topAxisLabel != null) topAxisLabel.text = axisLabelsCopy[1];
-
-                if (leftAxisLabel != null) leftAxisLabel.text = "";
-                if (bottomAxisLabel != null) bottomAxisLabel.text = "";
-            }
-
+            // Setting .value directly fires OnValueChanged (which re-enters this behaviour),
+            // so push slider updates to the next frame via SetValueWithoutNotify.
             if (xAxisSlider != null)
-                EditorApplication.delayCall += () => { xAxisSlider.SetValueWithoutNotify(PuppetValue.x); };
-
+                EditorApplication.delayCall += () => { if (this == null) return; xAxisSlider.SetValueWithoutNotify(puppetValue.x); };
             if (yAxisSlider != null)
-                EditorApplication.delayCall += () => { yAxisSlider.SetValueWithoutNotify(PuppetValue.y); };
-
-            if (valuePanel != null && valuePointer != null)
-            {
-                var vps = valuePanel.sizeDelta;
-                var newPos = new Vector3(vps.x * PuppetValue.x, vps.y * PuppetValue.y, 0);
-                newPos -= new Vector3(vps.x * 0.5f, vps.y * 0.5f, 0);
-
-                ((RectTransform)valuePointer.transform).localPosition = newPos;
-            }
+                EditorApplication.delayCall += () => { if (this == null) return; yAxisSlider.SetValueWithoutNotify(puppetValue.y); };
         }
 #endif
 
@@ -192,6 +177,8 @@ namespace UdonExpressionDriver
             if (handler != null) handler._OnPuppetClose();
         }
 
+        // Converts the panel coords (0..1) into the directional values the handler expects:
+        // two-axis sends x/y as -1..1, four-axis sends each direction's strength as 0..1.
         private void SendValueUpdate()
         {
             if (handler == null) return;
@@ -199,7 +186,7 @@ namespace UdonExpressionDriver
             if (AxisPuppetType == AxisPuppetType.Four)
             {
                 var coords = PuppetValue;
-                
+
                 // X direction
                 var dxPlus  = Mathf.Max(coords.x * 2 - 1, 0f);
                 var dxMinus = Mathf.Max(1 - coords.x * 2, 0f);

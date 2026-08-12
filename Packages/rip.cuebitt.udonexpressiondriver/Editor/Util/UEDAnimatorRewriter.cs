@@ -77,8 +77,13 @@ namespace UdonExpressionDriver.Editor
 
             if (!NeedsRewrite(original, propRoot))
             {
+                // No prop-relative paths to fix, so point the Animator at the source and clear
+                // any GUID bookkeeping left over from a previous generation.
                 if (animator.runtimeAnimatorController != original)
                     animator.runtimeAnimatorController = original;
+                if (guidProperty != null) guidProperty.stringValue = "";
+                if (sourceGuidProperty != null) sourceGuidProperty.stringValue = "";
+                serialized.ApplyModifiedProperties();
                 return false;
             }
 
@@ -155,19 +160,16 @@ namespace UdonExpressionDriver.Editor
             if (copy == null) return null;
             copy.name = "UED_" + source.name;
 
-            // Rewrite every clip binding to be prop-relative. Clips that change are cloned in-memory
+            // Rewrite every clip binding to be prop-relative in one pass over the state graph,
+            // collecting which clips are actually used. Clips that change are cloned in-memory
             // (Object.Instantiate deep-copies an AnimationClip); the source clips are never touched.
             var cache = new Dictionary<AnimationClip, AnimationClip>();
-            foreach (var layer in copy.layers)
-                if (layer.stateMachine != null)
-                    RewriteStateMachine(layer.stateMachine, propRoot, cache);
-
-            // Persist rewritten clips as sub-assets of the copied controller so builds bake them.
             var seen = new HashSet<AnimationClip>();
             foreach (var layer in copy.layers)
                 if (layer.stateMachine != null)
-                    CollectClips(layer.stateMachine, seen);
+                    RewriteAndCollect(layer.stateMachine, propRoot, cache, seen);
 
+            // Persist the used (rewritten) clips as sub-assets of the copied controller so builds bake them.
             var usedNames = new HashSet<string>();
             foreach (var clip in seen)
             {
@@ -184,20 +186,28 @@ namespace UdonExpressionDriver.Editor
             return copy;
         }
 
-        private static void RewriteStateMachine(AnimatorStateMachine stateMachine, GameObject propRoot, Dictionary<AnimationClip, AnimationClip> cache)
+        // Walks the state machine rewriting motions and recording every clip that ends up used.
+        private static void RewriteAndCollect(AnimatorStateMachine stateMachine, GameObject propRoot, Dictionary<AnimationClip, AnimationClip> cache, HashSet<AnimationClip> seen)
         {
             if (stateMachine == null) return;
             foreach (var childState in stateMachine.states)
-                if (childState.state != null)
-                    childState.state.motion = RewriteMotion(childState.state.motion, propRoot, cache);
+            {
+                if (childState.state == null) continue;
+                childState.state.motion = RewriteMotionAndCollect(childState.state.motion, propRoot, cache, seen);
+            }
             foreach (var childMachine in stateMachine.stateMachines)
-                RewriteStateMachine(childMachine.stateMachine, propRoot, cache);
+                RewriteAndCollect(childMachine.stateMachine, propRoot, cache, seen);
         }
 
-        private static Motion RewriteMotion(Motion motion, GameObject propRoot, Dictionary<AnimationClip, AnimationClip> cache)
+        // Rewrites a clip (or every clip under a blend tree) and notes it as used.
+        private static Motion RewriteMotionAndCollect(Motion motion, GameObject propRoot, Dictionary<AnimationClip, AnimationClip> cache, HashSet<AnimationClip> seen)
         {
             if (motion is AnimationClip clip)
-                return RewriteClip(clip, propRoot, cache);
+            {
+                var rewritten = RewriteClip(clip, propRoot, cache);
+                seen.Add(rewritten);
+                return rewritten;
+            }
 
             if (motion is BlendTree tree)
             {
@@ -205,7 +215,7 @@ namespace UdonExpressionDriver.Editor
                 var changed = false;
                 for (var i = 0; i < children.Length; i++)
                 {
-                    var newMotion = RewriteMotion(children[i].motion, propRoot, cache);
+                    var newMotion = RewriteMotionAndCollect(children[i].motion, propRoot, cache, seen);
                     if (!ReferenceEquals(newMotion, children[i].motion))
                     {
                         children[i].motion = newMotion;
@@ -240,32 +250,46 @@ namespace UdonExpressionDriver.Editor
 
         private static void RewriteFloatBinding(AnimationClip clone, AnimationClip source, EditorCurveBinding binding, GameObject propRoot)
         {
-            var newPath = RewriteBindingPath(binding.path, propRoot);
-            if (newPath == binding.path) return;
-            if (ShouldDropRootActive(binding, newPath))
+            if (!TryRewriteBinding(binding, propRoot, out var newBinding, out var drop)) return;
+            if (drop)
             {
                 AnimationUtility.SetEditorCurve(clone, binding, null);
                 return;
             }
-            var newBinding = binding;
-            newBinding.path = newPath;
             AnimationUtility.SetEditorCurve(clone, binding, null);
             AnimationUtility.SetEditorCurve(clone, newBinding, AnimationUtility.GetEditorCurve(source, binding));
         }
 
         private static void RewriteObjectBinding(AnimationClip clone, AnimationClip source, EditorCurveBinding binding, GameObject propRoot)
         {
-            var newPath = RewriteBindingPath(binding.path, propRoot);
-            if (newPath == binding.path) return;
-            if (ShouldDropRootActive(binding, newPath))
+            if (!TryRewriteBinding(binding, propRoot, out var newBinding, out var drop)) return;
+            if (drop)
             {
                 AnimationUtility.SetObjectReferenceCurve(clone, binding, null);
                 return;
             }
-            var newBinding = binding;
-            newBinding.path = newPath;
             AnimationUtility.SetObjectReferenceCurve(clone, binding, null);
             AnimationUtility.SetObjectReferenceCurve(clone, newBinding, AnimationUtility.GetObjectReferenceCurve(source, binding));
+        }
+
+        // Computes the prop-relative path for a binding. Returns false when the path is already
+        // correct, and sets drop=true for root-active toggles that must not bind to the prop root.
+        private static bool TryRewriteBinding(EditorCurveBinding binding, GameObject propRoot, out EditorCurveBinding newBinding, out bool drop)
+        {
+            newBinding = binding;
+            drop = false;
+
+            var newPath = RewriteBindingPath(binding.path, propRoot);
+            if (newPath == binding.path) return false;
+
+            if (ShouldDropRootActive(binding, newPath))
+            {
+                drop = true;
+                return true;
+            }
+
+            newBinding.path = newPath;
+            return true;
         }
 
         /// <summary>
@@ -305,29 +329,6 @@ namespace UdonExpressionDriver.Editor
                 if (propRoot.transform.Find(stripped) != null) return stripped;
             }
             return path;
-        }
-
-        private static void CollectClips(AnimatorStateMachine stateMachine, HashSet<AnimationClip> seen)
-        {
-            if (stateMachine == null) return;
-            foreach (var childState in stateMachine.states)
-                if (childState.state != null)
-                    CollectMotionClips(childState.state.motion, seen);
-            foreach (var childMachine in stateMachine.stateMachines)
-                CollectClips(childMachine.stateMachine, seen);
-        }
-
-        private static void CollectMotionClips(Motion motion, HashSet<AnimationClip> seen)
-        {
-            if (motion is AnimationClip clip)
-            {
-                seen.Add(clip);
-            }
-            else if (motion is BlendTree tree)
-            {
-                foreach (var child in tree.children)
-                    CollectMotionClips(child.motion, seen);
-            }
         }
 
         private static string SanitizeFilename(string name)
