@@ -114,8 +114,8 @@ namespace UdonExpressionDriver
 
             _InitHandGestures();
 
-            if (radialPuppet != null) radialPuppet.gameObject.SetActive(false);
-            if (axisPuppet != null) axisPuppet.gameObject.SetActive(false);
+            // Start with a clean slate (no stale UI for late joiners or freshly worn props).
+            _CloseAllMenus();
         }
 
         // Resolves the GestureLeft/GestureRight param indices and whether the Animator actually
@@ -202,6 +202,25 @@ namespace UdonExpressionDriver
         public override void OnDeserialization()
         {
             _ApplyAllToAnimator();
+        }
+
+        /// <summary>
+        /// True when the local player is the owner of this controller's object. The same
+        /// check _SetParam uses for synced-param writes, so there is one consistent owner
+        /// across menu access and parameter writes. Owner is derived from VRChat's native
+        /// per-object ownership (no custom synced owner state), so late joiners and owner
+        /// reassignment after a player leaves converge automatically.
+        /// </summary>
+        private bool _IsOwner()
+        {
+            return Networking.IsOwner(gameObject);
+        }
+
+        public override void OnOwnershipTransferred(VRCPlayerApi player)
+        {
+            // Ownership loss (drop, takeover, or the owner leaving) hides any open
+            // menu/puppet/hand-gesture UI so a non-owner never sees or drives the prop.
+            if (!_IsOwner()) _CloseAllMenus();
         }
 
         /// <summary>
@@ -392,6 +411,8 @@ namespace UdonExpressionDriver
 
         public void _ToggleMenu()
         {
+            if (!_IsOwner()) return;
+
             if (_activePuppetFlat >= 0 || _activeHandGestures)
             {
                 _OnPuppetClose();
@@ -426,12 +447,15 @@ namespace UdonExpressionDriver
         public override void Interact()
         {
             if (!interactTogglesMenu) return;
+            if (!_IsOwner()) return;
             _ToggleMenu();
         }
 
         /// <summary>Handles a press on a control within the current menu level.</summary>
         public void _OnControlPressed(int controlIndex)
         {
+            if (!_IsOwner()) return;
+
             var count = _GetCurrentMenuControlCount();
             if (controlIndex < 0 || controlIndex >= count) return;
 
@@ -484,6 +508,8 @@ namespace UdonExpressionDriver
         /// </summary>
         private void _OpenPuppet(int flat)
         {
+            if (!_IsOwner()) return;
+
             var type = controlTypes != null && flat < controlTypes.Length ? controlTypes[flat] : -1;
             UdonSharpBehaviour puppet = null;
             if (type == ControlRadialPuppet) puppet = radialPuppet;
@@ -544,17 +570,20 @@ namespace UdonExpressionDriver
 
         public override void _OnPuppetRadial(float value)
         {
+            if (!_IsOwner()) return;
             _WritePuppetSubParam(0, value);
         }
 
         public override void _OnPuppetTwo(float x, float y)
         {
+            if (!_IsOwner()) return;
             _WritePuppetSubParam(0, x);
             _WritePuppetSubParam(1, y);
         }
 
         public override void _OnPuppetFour(float negX, float posX, float negY, float posY)
         {
+            if (!_IsOwner()) return;
             _WritePuppetSubParam(0, negX);
             _WritePuppetSubParam(1, posX);
             _WritePuppetSubParam(2, negY);
@@ -563,6 +592,8 @@ namespace UdonExpressionDriver
 
         public override void _OnPuppetClose()
         {
+            if (!_IsOwner()) return;
+
             _activePuppetFlat = -1;
             _activeHandGestures = false;
             if (radialPuppet != null) radialPuppet.gameObject.SetActive(false);
@@ -572,11 +603,27 @@ namespace UdonExpressionDriver
         }
 
         /// <summary>
+        /// Hides every piece of menu UI (radial menu, puppets, hand-gesture panel) and resets the
+        /// active-control state. Called when the local player loses ownership so a non-owner never
+        /// sees or drives the prop. Null-safe and idempotent.
+        /// </summary>
+        private void _CloseAllMenus()
+        {
+            _activePuppetFlat = -1;
+            _activeHandGestures = false;
+            _SetMenuVisible(false);
+            if (radialPuppet != null) radialPuppet.gameObject.SetActive(false);
+            if (axisPuppet != null) axisPuppet.gameObject.SetActive(false);
+            if (handGestures != null) handGestures.gameObject.SetActive(false);
+        }
+
+        /// <summary>
         /// Opens the world-space hand gesture menu and hides the menu. Seeds the current left/right
         /// gesture from the synced GestureLeft/GestureRight params when present.
         /// </summary>
         private void _OpenHandGestureMenu()
         {
+            if (!_IsOwner()) return;
             if (handGestures == null) return;
 
             _activeHandGestures = true;
