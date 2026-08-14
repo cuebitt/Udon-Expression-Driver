@@ -485,7 +485,9 @@ namespace UdonExpressionDriver
         private void _OpenPuppet(int flat)
         {
             var type = controlTypes != null && flat < controlTypes.Length ? controlTypes[flat] : -1;
-            UdonSharpBehaviour puppet = type == ControlRadialPuppet ? (UdonSharpBehaviour)radialPuppet : (type == ControlTwoAxis || type == ControlFourAxis ? (UdonSharpBehaviour)axisPuppet : null);
+            UdonSharpBehaviour puppet = null;
+            if (type == ControlRadialPuppet) puppet = radialPuppet;
+            else if (type == ControlTwoAxis || type == ControlFourAxis) puppet = axisPuppet;
             if (puppet == null) return;
 
             _activePuppetFlat = flat;

@@ -419,45 +419,5 @@ namespace UdonExpressionDriver.Editor
             return result;
         }
 
-        /// <summary>
-        /// Test helper: fabricates a VF.Model.VRCFury component with an ArmatureLink feature on the
-        /// selected GameObject, since avatar-side VRCFury components can't be added via the menu in a
-        /// world project. Use it to exercise the bridge without an avatar project.
-        /// </summary>
-        [MenuItem("Tools/Udon Expression Driver/Add Test VRCFury ArmatureLink")]
-        public static void AddTestVrcFuryArmatureLink()
-        {
-            var go = Selection.activeGameObject;
-            if (go == null)
-            {
-                Debug.LogError("[UED] Select a prop first.");
-                return;
-            }
-
-            var vfType = System.Type.GetType("VF.Model.VRCFury, VRCFury");
-            var featureType = System.Type.GetType("VF.Model.Feature.ArmatureLink, VRCFury");
-            if (vfType == null || featureType == null)
-            {
-                Debug.LogError("[UED] VRCFury types not found (is com.vrcfury.vrcfury installed?).");
-                return;
-            }
-
-            var component = go.AddComponent(vfType);
-            var serialized = new SerializedObject(component);
-            var content = serialized.FindProperty("content");
-            content.managedReferenceValue = System.Activator.CreateInstance(featureType);
-            serialized.ApplyModifiedProperties();
-
-            var linkTo = serialized.FindProperty("content").FindPropertyRelative("linkTo");
-            if (linkTo.arraySize == 0) linkTo.arraySize = 1;
-            var first = linkTo.GetArrayElementAtIndex(0);
-            first.FindPropertyRelative("useBone").boolValue = true;
-            first.FindPropertyRelative("bone").enumValueIndex = (int)UnityEngine.HumanBodyBones.Head;
-            var propBone = serialized.FindProperty("content").FindPropertyRelative("propBone");
-            if (propBone != null) propBone.objectReferenceValue = go;
-            serialized.ApplyModifiedProperties();
-
-            Debug.Log($"[UED] Added a test VRCFury ArmatureLink (bone = Head) to '{go.name}'. Now click 'Re-import from VRCFury' on its UEDArmatureLink.");
-        }
     }
 }
