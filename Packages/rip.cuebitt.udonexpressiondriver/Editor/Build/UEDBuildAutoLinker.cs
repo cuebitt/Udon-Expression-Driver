@@ -313,7 +313,7 @@ namespace UdonExpressionDriver.Editor
             var handGesturesProp = controllerSerialized.FindProperty("handGestures");
             if (handGesturesProp == null) return false;
 
-            const string prefabPath = "Packages/rip.cuebitt.udonexpressiondriver/Runtime/ExpressionMenu/Menu Controls/Gesture Picker/Gesture Menu.prefab";
+            const string prefabPath = "Packages/rip.cuebitt.udonexpressiondriver/Runtime/ExpressionMenu/Menu Controls/Gesture Menu/Gesture Menu.prefab";
 
             var gesture = EnsurePuppet<HandGestureMenu>(handGesturesProp, prefabPath, "Hand Gestures", controller);
 
