@@ -9,14 +9,15 @@ namespace UdonExpressionDriver
     [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
     public class ControlTest : UEDPuppetHandler
     {
-        [Header("Internal")]
-        [SerializeField] private TMP_Text radialPuppetValue;
+        [Header("Internal")] [SerializeField] private TMP_Text radialPuppetValue;
         [SerializeField] private TMP_Text twoAxisX;
         [SerializeField] private TMP_Text twoAxisY;
         [SerializeField] private TMP_Text fourAxisNegX;
         [SerializeField] private TMP_Text fourAxisPosX;
         [SerializeField] private TMP_Text fourAxisNegY;
         [SerializeField] private TMP_Text fourAxisPosY;
+        [SerializeField] private TMP_Text gestureLeft;
+        [SerializeField] private TMP_Text gestureRight;
 
         public override void _OnPuppetRadial(float value)
         {
@@ -39,6 +40,14 @@ namespace UdonExpressionDriver
 
         public override void _OnPuppetClose()
         {
+        }
+
+        public override void _OnHandGesture(int left, int right)
+        {
+            var gestureNames = new[]
+                { "Neutral", "Fist", "HandOpen", "FingerPoint", "Victory", "RockNRoll", "HandGun", "ThumbsUp" };
+            if (gestureLeft != null) gestureLeft.text = gestureNames[left];
+            if (gestureRight != null) gestureRight.text = gestureNames[right];
         }
     }
 }

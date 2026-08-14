@@ -24,6 +24,11 @@ namespace UdonExpressionDriver
         private const int ControlFourAxis = 4;
         private const int ControlBack = 5;
         private const int ControlRadialPuppet = 6;
+        private const int ControlHandGestures = 7;
+
+        private const string GestureLeftName = "GestureLeft";
+        private const string GestureRightName = "GestureRight";
+        private const string HandGesturesControlName = "Hand Gestures";
 
         private const int MaxMenuStackDepth = 8;
         private const int MaxMenuControls = 8;
@@ -66,11 +71,14 @@ namespace UdonExpressionDriver
         [Tooltip("Whether interacting with this prop toggles the menu visibility.")]
         [SerializeField] private bool interactTogglesMenu = true;
 
-        [Header("Puppets")]
         [Tooltip("World-space radial puppet control shown when a radial puppet menu item is opened.")]
-        [SerializeField] private GameObject radialPuppet;
+        [SerializeField] private RadialPuppet radialPuppet;
         [Tooltip("World-space axis puppet control shown when a two- or four-axis puppet menu item is opened.")]
-        [SerializeField] private GameObject axisPuppet;
+        [SerializeField] private AxisPuppet axisPuppet;
+        [Tooltip("When on, a 'Hand Gestures' wedge is appended to the top menu level if the Animator uses GestureLeft or GestureRight.")]
+        [SerializeField] private bool enableHandGestureEmulation;
+        [Tooltip("World-space hand gesture menu shown when the Hand Gestures menu item is opened.")]
+        [SerializeField] private HandGestureMenu handGestures;
 
         [SerializeField, HideInInspector] private RuntimeAnimatorController importedAnimatorController;
         [SerializeField, HideInInspector] private string importedMenuGuid;
@@ -78,6 +86,7 @@ namespace UdonExpressionDriver
         [SerializeField, HideInInspector] private string generatedControllerGuid;
         [SerializeField, HideInInspector] private string generatedSourceGuid;
         [SerializeField, HideInInspector] private bool autoAddedAnimator;
+        [SerializeField, HideInInspector] private string autoAddedHandGestureParams;
 
         [UdonSynced] private float[] _syncedValues = new float[0];
         private float[] _localValues = new float[0];
@@ -89,6 +98,11 @@ namespace UdonExpressionDriver
         private int[] _menuStack = new int[MaxMenuStackDepth];
         private int _menuStackDepth;
         private int _activePuppetFlat = -1;
+        private bool _activeHandGestures;
+
+        private int _gestureLeftIndex = -1;
+        private int _gestureRightIndex = -1;
+        private bool _animatorUsesHandGestures;
 
         private void Start()
         {
@@ -98,8 +112,41 @@ namespace UdonExpressionDriver
             _ApplyAllToAnimator();
             _RefreshMenuView();
 
-            if (radialPuppet != null) radialPuppet.SetActive(false);
-            if (axisPuppet != null) axisPuppet.SetActive(false);
+            _InitHandGestures();
+
+            if (radialPuppet != null) radialPuppet.gameObject.SetActive(false);
+            if (axisPuppet != null) axisPuppet.gameObject.SetActive(false);
+        }
+
+        // Resolves the GestureLeft/GestureRight param indices and whether the Animator actually
+        // uses them, so the Hand Gestures wedge only appears when both the toggle and the Animator agree.
+        private void _InitHandGestures()
+        {
+            _gestureLeftIndex = _FindParamIndex(GestureLeftName);
+            _gestureRightIndex = _FindParamIndex(GestureRightName);
+            _animatorUsesHandGestures = _gestureLeftIndex >= 0 || _gestureRightIndex >= 0 || _GestureParamInAnimator();
+
+            if (handGestures != null) handGestures.gameObject.SetActive(false);
+        }
+
+        private int _FindParamIndex(string name)
+        {
+            if (paramNames == null) return -1;
+            for (var i = 0; i < paramNames.Length; i++)
+            {
+                if (paramNames[i] == name) return i;
+            }
+            return -1;
+        }
+
+        private bool _GestureParamInAnimator()
+        {
+            if (animator == null || animator.parameters == null) return false;
+            foreach (var p in animator.parameters)
+            {
+                if (p.name == GestureLeftName || p.name == GestureRightName) return true;
+            }
+            return false;
         }
 
         // A half-imported prop can leave these null; treat missing arrays as empty.
@@ -246,11 +293,34 @@ namespace UdonExpressionDriver
 
         public int _GetCurrentMenuControlCount()
         {
-            return _NextControlStart() - _CurrentControlStart();
+            var count = _TopLevelBaseControlCount();
+            if (_currentMenu == 0 && _HandGesturesVisible()) count++;
+            return count;
+        }
+
+        /// <summary>Base control count for the current level, reserving a slot for the Hand Gestures wedge at the top level.</summary>
+        private int _TopLevelBaseControlCount()
+        {
+            var count = _NextControlStart() - _CurrentControlStart();
+            if (count < 0) count = 0;
+            if (_currentMenu == 0 && _HandGesturesVisible() && count > MaxMenuControls - 1) count = MaxMenuControls - 1;
+            return count;
+        }
+
+        private bool _HandGesturesVisible()
+        {
+            return enableHandGestureEmulation && _animatorUsesHandGestures;
+        }
+
+        private bool _IsHandGesturesSlot(int controlIndex)
+        {
+            return _currentMenu == 0 && _HandGesturesVisible() && controlIndex == _TopLevelBaseControlCount();
         }
 
         public string _GetControlName(int controlIndex)
         {
+            if (_IsHandGesturesSlot(controlIndex)) return HandGesturesControlName;
+
             var flat = _CurrentControlStart() + controlIndex;
             if (controlNames == null || flat < 0 || flat >= controlNames.Length) return "";
             return controlNames[flat];
@@ -258,6 +328,8 @@ namespace UdonExpressionDriver
 
         public Texture2D _GetControlIcon(int controlIndex)
         {
+            if (_IsHandGesturesSlot(controlIndex)) return null;
+
             var flat = _CurrentControlStart() + controlIndex;
             if (controlIcons == null || flat < 0 || flat >= controlIcons.Length) return null;
             return controlIcons[flat];
@@ -320,7 +392,7 @@ namespace UdonExpressionDriver
 
         public void _ToggleMenu()
         {
-            if (_activePuppetFlat >= 0)
+            if (_activePuppetFlat >= 0 || _activeHandGestures)
             {
                 _OnPuppetClose();
                 return;
@@ -360,10 +432,16 @@ namespace UdonExpressionDriver
         /// <summary>Handles a press on a control within the current menu level.</summary>
         public void _OnControlPressed(int controlIndex)
         {
-            var start = _CurrentControlStart();
-            var count = _NextControlStart() - start;
+            var count = _GetCurrentMenuControlCount();
             if (controlIndex < 0 || controlIndex >= count) return;
 
+            if (_IsHandGesturesSlot(controlIndex))
+            {
+                _OpenHandGestureMenu();
+                return;
+            }
+
+            var start = _CurrentControlStart();
             var flat = start + controlIndex;
             if (controlTypes == null || flat >= controlTypes.Length) return;
 
@@ -407,20 +485,20 @@ namespace UdonExpressionDriver
         private void _OpenPuppet(int flat)
         {
             var type = controlTypes != null && flat < controlTypes.Length ? controlTypes[flat] : -1;
-            var puppet = type == ControlRadialPuppet ? radialPuppet : (type == ControlTwoAxis || type == ControlFourAxis ? axisPuppet : null);
+            UdonSharpBehaviour puppet = type == ControlRadialPuppet ? (UdonSharpBehaviour)radialPuppet : (type == ControlTwoAxis || type == ControlFourAxis ? (UdonSharpBehaviour)axisPuppet : null);
             if (puppet == null) return;
 
             _activePuppetFlat = flat;
             _SetMenuVisible(false);
 
-            if (radialPuppet != null) radialPuppet.SetActive(puppet == radialPuppet);
-            if (axisPuppet != null) axisPuppet.SetActive(puppet == axisPuppet);
+            if (radialPuppet != null) radialPuppet.gameObject.SetActive(puppet == radialPuppet);
+            if (axisPuppet != null) axisPuppet.gameObject.SetActive(puppet == axisPuppet);
 
             var name = controlNames != null && flat < controlNames.Length ? controlNames[flat] : "";
 
             if (type == ControlRadialPuppet)
             {
-                var radial = puppet.GetComponent<RadialPuppet>();
+                var radial = (RadialPuppet)puppet;
                 if (radial != null)
                 {
                     radial.Label = name;
@@ -430,7 +508,7 @@ namespace UdonExpressionDriver
             }
             else
             {
-                var axis = puppet.GetComponent<AxisPuppet>();
+                var axis = (AxisPuppet)puppet;
                 if (axis != null)
                 {
                     axis.Label = name;
@@ -484,9 +562,51 @@ namespace UdonExpressionDriver
         public override void _OnPuppetClose()
         {
             _activePuppetFlat = -1;
-            if (radialPuppet != null) radialPuppet.SetActive(false);
-            if (axisPuppet != null) axisPuppet.SetActive(false);
+            _activeHandGestures = false;
+            if (radialPuppet != null) radialPuppet.gameObject.SetActive(false);
+            if (axisPuppet != null) axisPuppet.gameObject.SetActive(false);
+            if (handGestures != null) handGestures.gameObject.SetActive(false);
             _SetMenuVisible(true);
+        }
+
+        /// <summary>
+        /// Opens the world-space hand gesture menu and hides the menu. Seeds the current left/right
+        /// gesture from the synced GestureLeft/GestureRight params when present.
+        /// </summary>
+        private void _OpenHandGestureMenu()
+        {
+            if (handGestures == null) return;
+
+            _activeHandGestures = true;
+            _SetMenuVisible(false);
+
+            if (radialPuppet != null) radialPuppet.gameObject.SetActive(false);
+            if (axisPuppet != null) axisPuppet.gameObject.SetActive(false);
+            handGestures.gameObject.SetActive(true);
+
+            if (_gestureLeftIndex >= 0) handGestures.LeftGesture = Mathf.RoundToInt(_GetParam(_gestureLeftIndex));
+            if (_gestureRightIndex >= 0) handGestures.RightGesture = Mathf.RoundToInt(_GetParam(_gestureRightIndex));
+
+            var player = Networking.LocalPlayer;
+            if (player != null)
+            {
+                var head = player.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
+                var pos = head.position + head.rotation * Vector3.forward * 0.8f;
+                pos.y -= 0.4f;
+                handGestures.transform.position = pos;
+                // World-space UI reads from its -Z face, so point +Z away from the user's head.
+                handGestures.transform.rotation = Quaternion.LookRotation(pos - head.position, Vector3.up);
+            }
+        }
+
+        /// <summary>
+        /// Writes the selected gestures into the GestureLeft/GestureRight params (synced, owner-gated).
+        /// Each hand is only written if the prop's Animator uses that parameter.
+        /// </summary>
+        public override void _OnHandGesture(int left, int right)
+        {
+            if (_gestureLeftIndex >= 0) _SetIntParam(_gestureLeftIndex, left);
+            if (_gestureRightIndex >= 0) _SetIntParam(_gestureRightIndex, right);
         }
 
         private void _WritePuppetSubParam(int index, float value)

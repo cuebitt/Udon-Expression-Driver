@@ -70,6 +70,7 @@ namespace UdonExpressionDriver.Editor
             TryRevert("forwarders", RevertForwarders);
             TryRevert("auto-linked menu/puppet objects", RevertAutoLinked);
             TryRevert("auto-added Animators", RevertAutoAddedAnimators);
+            TryRevert("auto-added gesture params", RevertAutoAddedGestureParams);
         }
 
         private static void TryRevert(string what, System.Action revert)
@@ -128,6 +129,7 @@ namespace UdonExpressionDriver.Editor
         {
             TryRevert("leftover auto-linked menu/puppet objects", RevertAutoLinked);
             TryRevert("leftover auto-added Animators", RevertAutoAddedAnimators);
+            TryRevert("leftover auto-added gesture params", RevertAutoAddedGestureParams);
 
             var processedLinks = new HashSet<GameObject>();
             var processedControllers = new HashSet<GameObject>();
@@ -177,11 +179,13 @@ namespace UdonExpressionDriver.Editor
 
                 if (EnsureMenuView(controller)) changed = true;
                 if (EnsurePuppets(controller)) changed = true;
+                if (EnsureHandGesturesEnabled(controller) && EnsureHandGestures(controller)) changed = true;
 
                 // Idempotently wires VRCFury controller/menu/param data, then applies whatever
                 // assets are stored on the controller (VRCFury's or the Expressions section's).
                 UEDVrcFuryBridge.AutoImportMenu(controller);
                 UEDVrcFuryBridge.ApplyExpressions(controller);
+                UEDVrcFuryBridge.EnsureHandGestureParams(controller);
 
                 // Swaps in a prop-relative copy of the controller (avatar-prop clip paths don't
                 // resolve against the prop root's own Animator) as a transient generated asset.
@@ -251,8 +255,8 @@ namespace UdonExpressionDriver.Editor
             const string radialPrefabPath = "Packages/rip.cuebitt.udonexpressiondriver/Runtime/ExpressionMenu/Menu Controls/Radial Puppet/Radial Puppet.prefab";
             const string axisPrefabPath = "Packages/rip.cuebitt.udonexpressiondriver/Runtime/ExpressionMenu/Menu Controls/Axis Puppet/Axis Puppet.prefab";
 
-            var radial = EnsurePuppet(radialPuppetProp, radialPrefabPath, "Radial Puppet", controller);
-            var axis = EnsurePuppet(axisPuppetProp, axisPrefabPath, "Axis Puppet", controller);
+            var radial = EnsurePuppet<RadialPuppet>(radialPuppetProp, radialPrefabPath, "Radial Puppet", controller);
+            var axis = EnsurePuppet<AxisPuppet>(axisPuppetProp, axisPrefabPath, "Axis Puppet", controller);
 
             var changed = false;
             if (radial != null && radialPuppetProp.objectReferenceValue != radial)
@@ -266,27 +270,65 @@ namespace UdonExpressionDriver.Editor
                 changed = true;
             }
 
-            if (radial != null && radial.GetComponent<RadialPuppet>() is RadialPuppet radialPuppet)
-                if (LinkPuppetHandler(radialPuppet, controller)) changed = true;
+            if (radial != null)
+                if (LinkPuppetHandler(radial, controller)) changed = true;
 
-            if (axis != null && axis.GetComponent<AxisPuppet>() is AxisPuppet axisPuppet)
-                if (LinkPuppetHandler(axisPuppet, controller)) changed = true;
+            if (axis != null)
+                if (LinkPuppetHandler(axis, controller)) changed = true;
 
             if (changed) controllerSerialized.ApplyModifiedProperties();
             return changed;
         }
 
-        /// <summary>Returns the puppet already assigned to the controller, or spawns one if unset.</summary>
-        private static GameObject EnsurePuppet(SerializedProperty prop, string prefabPath, string objectName, UEDFullController controller)
+        /// <summary>Returns the component already assigned to the controller, or spawns one if unset.</summary>
+        private static T EnsurePuppet<T>(SerializedProperty prop, string prefabPath, string objectName, UEDFullController controller) where T : UdonSharpBehaviour
         {
-            var puppet = prop.objectReferenceValue as GameObject;
-            if (puppet != null) return puppet;
+            var existing = prop.objectReferenceValue as T;
+            if (existing != null) return existing;
 
-            puppet = InstantiateAutoLinked(prefabPath, objectName, controller.transform);
-            if (puppet != null && puppet.GetComponent<UdonSharpBehaviour>() is UdonSharpBehaviour behaviour)
-                UEDBehaviourInspector.MarkAutoLinked(behaviour);
+            var instance = InstantiateAutoLinked(prefabPath, objectName, controller.transform);
+            if (instance == null) return null;
 
-            return puppet;
+            var component = instance.GetComponent<T>();
+            if (component != null) UEDBehaviourInspector.MarkAutoLinked(component);
+            return component;
+        }
+
+        /// <summary>True when Hand Gesture Emulation is enabled on the controller.</summary>
+        private static bool EnsureHandGesturesEnabled(UEDFullController controller)
+        {
+            var serialized = new SerializedObject(controller);
+            var prop = serialized.FindProperty("enableHandGestureEmulation");
+            return prop != null && prop.boolValue;
+        }
+
+        /// <summary>
+        /// Creates the world-space hand gesture menu as an inactive child of the controller if the
+        /// ref is unset, and wires its handler to the controller. Auto-added objects are marked so
+        /// they can be removed again when leaving play mode.
+        /// </summary>
+        private static bool EnsureHandGestures(UEDFullController controller)
+        {
+            var controllerSerialized = new SerializedObject(controller);
+            var handGesturesProp = controllerSerialized.FindProperty("handGestures");
+            if (handGesturesProp == null) return false;
+
+            const string prefabPath = "Packages/rip.cuebitt.udonexpressiondriver/Runtime/ExpressionMenu/Menu Controls/Gesture Picker/Gesture Menu.prefab";
+
+            var gesture = EnsurePuppet<HandGestureMenu>(handGesturesProp, prefabPath, "Hand Gestures", controller);
+
+            var changed = false;
+            if (gesture != null && handGesturesProp.objectReferenceValue != gesture)
+            {
+                handGesturesProp.objectReferenceValue = gesture;
+                changed = true;
+            }
+
+            if (gesture != null)
+                if (LinkPuppetHandler(gesture, controller)) changed = true;
+
+            if (changed) controllerSerialized.ApplyModifiedProperties();
+            return changed;
         }
 
         /// <summary>Instantiates one of the package's prefabs as an inactive child, ready to be auto-linked.</summary>
@@ -418,6 +460,9 @@ namespace UdonExpressionDriver.Editor
             foreach (var puppet in FindInScene<AxisPuppet>())
                 if (UEDBehaviourInspector.IsAutoLinked(puppet)) marked.Add(puppet.gameObject);
 
+            foreach (var menu in FindInScene<HandGestureMenu>())
+                if (UEDBehaviourInspector.IsAutoLinked(menu)) marked.Add(menu.gameObject);
+
             if (marked.Count == 0) return;
 
             foreach (var controller in FindInScene<UEDFullController>())
@@ -443,12 +488,12 @@ namespace UdonExpressionDriver.Editor
                 changed = true;
             }
 
-            foreach (var field in new[] { "radialPuppet", "axisPuppet" })
+            foreach (var field in new[] { "radialPuppet", "axisPuppet", "handGestures" })
             {
                 var prop = serialized.FindProperty(field);
                 if (prop == null) continue;
-                var go = prop.objectReferenceValue as GameObject;
-                if (go != null && marked.Contains(go))
+                var component = prop.objectReferenceValue as Component;
+                if (component != null && marked.Contains(component.gameObject))
                 {
                     prop.objectReferenceValue = null;
                     changed = true;
@@ -456,6 +501,112 @@ namespace UdonExpressionDriver.Editor
             }
 
             if (changed) serialized.ApplyModifiedProperties();
+        }
+
+        /// <summary>
+        /// Removes the GestureLeft/GestureRight params that UEDBuildAutoLinker auto-appended to a
+        /// controller's parameter arrays before play/build (via UEDVrcFuryBridge.EnsureHandGestureParams),
+        /// and clears the marker, so the authored scene is never saved with them. Idempotent: only the
+        /// exact names recorded in autoAddedHandGestureParams are stripped, so a user's own gesture params
+        /// are never touched.
+        /// </summary>
+        private static void RevertAutoAddedGestureParams()
+        {
+            var strippedCount = 0;
+
+            foreach (var controller in FindInScene<UEDFullController>())
+            {
+                var serialized = new SerializedObject(controller);
+                var markerProp = serialized.FindProperty("autoAddedHandGestureParams");
+                if (markerProp == null || string.IsNullOrEmpty(markerProp.stringValue)) continue;
+
+                if (StripGestureParams(serialized, markerProp.stringValue)) strippedCount++;
+
+                markerProp.stringValue = "";
+                serialized.ApplyModifiedProperties();
+            }
+
+            if (strippedCount > 0)
+                Debug.Log($"[UED] Removed {strippedCount} auto-added Hand Gesture parameter set(s).");
+        }
+
+        private static bool StripGestureParams(SerializedObject serialized, string namesCsv)
+        {
+            var names = namesCsv.Split(',');
+            var namesProp = serialized.FindProperty("paramNames");
+            var typesProp = serialized.FindProperty("paramTypes");
+            var defaultsProp = serialized.FindProperty("paramDefaults");
+            var syncedProp = serialized.FindProperty("paramSynced");
+            if (namesProp == null) return false;
+
+            var keepNames = new List<string>();
+            var keepTypes = new List<int>();
+            var keepDefaults = new List<float>();
+            var keepSynced = new List<bool>();
+            var removed = false;
+
+            for (var i = 0; i < namesProp.arraySize; i++)
+            {
+                var name = namesProp.GetArrayElementAtIndex(i).stringValue;
+                if (Contains(name, names))
+                {
+                    removed = true;
+                    continue;
+                }
+                keepNames.Add(name);
+                keepTypes.Add(typesProp != null ? typesProp.GetArrayElementAtIndex(i).intValue : 0);
+                keepDefaults.Add(defaultsProp != null ? defaultsProp.GetArrayElementAtIndex(i).floatValue : 0f);
+                keepSynced.Add(syncedProp != null ? syncedProp.GetArrayElementAtIndex(i).boolValue : false);
+            }
+
+            if (!removed) return false;
+
+            WriteArray(namesProp, keepNames);
+            WriteArray(typesProp, keepTypes);
+            WriteArray(defaultsProp, keepDefaults);
+            WriteArray(syncedProp, keepSynced);
+            return true;
+        }
+
+        private static bool Contains(string value, string[] candidates)
+        {
+            foreach (var c in candidates)
+            {
+                if (c == value) return true;
+            }
+            return false;
+        }
+
+        private static void WriteArray(SerializedProperty prop, List<string> values)
+        {
+            if (prop == null) return;
+            prop.arraySize = values.Count;
+            for (var i = 0; i < values.Count; i++)
+                prop.GetArrayElementAtIndex(i).stringValue = values[i];
+        }
+
+        private static void WriteArray(SerializedProperty prop, List<int> values)
+        {
+            if (prop == null) return;
+            prop.arraySize = values.Count;
+            for (var i = 0; i < values.Count; i++)
+                prop.GetArrayElementAtIndex(i).intValue = values[i];
+        }
+
+        private static void WriteArray(SerializedProperty prop, List<float> values)
+        {
+            if (prop == null) return;
+            prop.arraySize = values.Count;
+            for (var i = 0; i < values.Count; i++)
+                prop.GetArrayElementAtIndex(i).floatValue = values[i];
+        }
+
+        private static void WriteArray(SerializedProperty prop, List<bool> values)
+        {
+            if (prop == null) return;
+            prop.arraySize = values.Count;
+            for (var i = 0; i < values.Count; i++)
+                prop.GetArrayElementAtIndex(i).boolValue = values[i];
         }
     }
 }

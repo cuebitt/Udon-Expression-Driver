@@ -167,6 +167,76 @@ namespace UdonExpressionDriver.Editor
             AutoImportAnimator(controller, animatorController);
         }
 
+        /// <summary>
+        /// Auto-registers GestureLeft/GestureRight as synced int params on the controller (appended
+        /// to paramNames/paramTypes/paramDefaults/paramSynced) when Enable Hand Gesture Emulation is on,
+        /// the prop's Animator uses the param, and it isn't already present. Idempotent. Records exactly
+        /// which names it appended in the hidden autoAddedHandGestureParams field (comma-separated) so the
+        /// auto-linker can strip only those entries again after play/build.
+        /// </summary>
+        public static void EnsureHandGestureParams(UEDFullController controller)
+        {
+            var serialized = new SerializedObject(controller);
+            var enableProp = serialized.FindProperty("enableHandGestureEmulation");
+            if (enableProp == null || !enableProp.boolValue) return;
+
+            var animator = serialized.FindProperty("animator")?.objectReferenceValue as Animator;
+            if (animator == null) return;
+
+            var namesProp = serialized.FindProperty("paramNames");
+            var typesProp = serialized.FindProperty("paramTypes");
+            var defaultsProp = serialized.FindProperty("paramDefaults");
+            var syncedProp = serialized.FindProperty("paramSynced");
+            if (namesProp == null) return;
+
+            var addedNames = new System.Collections.Generic.List<string>();
+            foreach (var name in new[] { "GestureLeft", "GestureRight" })
+            {
+                if (!AnimatorUsesParameter(animator, name)) continue;
+                if (ContainsName(namesProp, name)) continue;
+
+                var idx = namesProp.arraySize;
+                namesProp.arraySize = idx + 1;
+                if (typesProp != null) typesProp.arraySize = idx + 1;
+                if (defaultsProp != null) defaultsProp.arraySize = idx + 1;
+                if (syncedProp != null) syncedProp.arraySize = idx + 1;
+
+                namesProp.GetArrayElementAtIndex(idx).stringValue = name;
+                if (typesProp != null) typesProp.GetArrayElementAtIndex(idx).intValue = 1; // int
+                if (defaultsProp != null) defaultsProp.GetArrayElementAtIndex(idx).floatValue = 0f;
+                if (syncedProp != null) syncedProp.GetArrayElementAtIndex(idx).boolValue = true;
+
+                addedNames.Add(name);
+            }
+
+            if (addedNames.Count == 0) return;
+
+            var markerProp = serialized.FindProperty("autoAddedHandGestureParams");
+            if (markerProp != null) markerProp.stringValue = string.Join(",", addedNames.ToArray());
+            serialized.ApplyModifiedProperties();
+        }
+
+        private static bool ContainsName(SerializedProperty arrayProp, string name)
+        {
+            for (var i = 0; i < arrayProp.arraySize; i++)
+            {
+                if (arrayProp.GetArrayElementAtIndex(i).stringValue == name) return true;
+            }
+            return false;
+        }
+
+        private static bool AnimatorUsesParameter(Animator animator, string name)
+        {
+            if (animator.runtimeAnimatorController is UnityEditor.Animations.AnimatorController ac)
+            {
+                foreach (var p in ac.parameters)
+                {
+                    if (p.name == name) return true;
+                }
+            }
+            return false;
+        }
+
         public static T GetStoredAsset<T>(SerializedObject serialized, string guidField) where T : Object
         {
             var guid = serialized.FindProperty(guidField)?.stringValue;
@@ -237,7 +307,18 @@ namespace UdonExpressionDriver.Editor
 
         private static bool NeedsImport(UEDFullController controller, VRCExpressionsMenu menu, VRCExpressionParameters parameters)
         {
-            var (paramCount, controlCount) = CountData(controller);
+            var serialized = new SerializedObject(controller);
+            // Ignore any auto-added GestureLeft/GestureRight params so the import stays idempotent and
+            // never re-imports (which would drop them) just because hand gesture emulation appended them.
+            var paramCount = serialized.FindProperty("paramNames")?.arraySize ?? 0;
+            var marker = serialized.FindProperty("autoAddedHandGestureParams")?.stringValue;
+            if (!string.IsNullOrEmpty(marker)) paramCount -= marker.Split(',').Length;
+            if (paramCount < 0) paramCount = 0;
+
+            var menuStart = serialized.FindProperty("menuControlStart");
+            var controlCount = menuStart != null && menuStart.arraySize > 0
+                ? menuStart.GetArrayElementAtIndex(menuStart.arraySize - 1).intValue
+                : 0;
 
             var expectedParams = CountParams(menu, parameters);
             var expectedControls = CountControls(menu);

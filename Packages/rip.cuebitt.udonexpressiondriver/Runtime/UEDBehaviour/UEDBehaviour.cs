@@ -23,5 +23,9 @@ namespace UdonExpressionDriver
         public override void _OnPuppetClose()
         {
         }
+
+        public override void _OnHandGesture(int left, int right)
+        {
+        }
     }
 }

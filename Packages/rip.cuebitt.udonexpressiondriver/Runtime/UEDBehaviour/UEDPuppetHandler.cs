@@ -21,5 +21,8 @@ namespace UdonExpressionDriver
 
         /// <summary>Called when a puppet control's header is clicked (close/back).</summary>
         public abstract void _OnPuppetClose();
+
+        /// <summary>Called when a hand gesture menu's left/right gesture change (each 0-7).</summary>
+        public abstract void _OnHandGesture(int left, int right);
     }
 }

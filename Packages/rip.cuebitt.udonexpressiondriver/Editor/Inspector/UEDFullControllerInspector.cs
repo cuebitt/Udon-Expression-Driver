@@ -7,9 +7,10 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 namespace UdonExpressionDriver.Editor
 {
     /// <summary>
-    /// FullController inspector: a "Menu View" section (radial menu + interact toggle), an
-    /// "Expressions" section (Controller/Menu/Parameter assets, mirroring VRCFury's Full Controller)
-    /// that is the single way to populate the data arrays, and a Status summary. When a VRCFury
+    /// FullController inspector: an "Expressions" section (Controller/Menu/Parameter assets,
+    /// mirroring VRCFury's Full Controller) that is the single way to populate the data arrays,
+    /// a "Settings" section (interact toggle, hand gesture emulation), a "Menu Views & Controls"
+    /// section (radial menu, puppets, hand gesture menu), and a Status summary. When a VRCFury
     /// FullController is present its assets are imported automatically, but nothing is locked.
     /// A "Re-import from VRCFury" button re-pulls the data.
     /// </summary>
@@ -56,35 +57,51 @@ namespace UdonExpressionDriver.Editor
                 "prop carries a VRCFury Full Controller, its menu, parameters, and animator controller " +
                 "are imported automatically.");
 
-            DrawMenuViewSection();
-            DrawPuppetsSection();
             DrawExpressionsSection(controller, vrcFuryPresent);
+            DrawSettingsSection();
+            DrawMenuViewsAndControlsSection();
             DrawStatus(controller);
         }
 
-        private void DrawPuppetsSection()
+        private void DrawMenuViewsAndControlsSection()
         {
-            BeginSection("Puppets");
-
-            serializedObject.Update();
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("radialPuppet"), new GUIContent("Radial Puppet"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("axisPuppet"), new GUIContent("Axis Puppet"));
-            serializedObject.ApplyModifiedProperties();
-
-            EditorGUILayout.HelpBox("World-space puppet controls shown when a puppet menu item is pressed. Created automatically if unset.", MessageType.Info);
-            EndSection();
-        }
-
-        private void DrawMenuViewSection()
-        {
-            BeginSection("Menu View");
+            BeginSection("Menu Views & Controls");
 
             serializedObject.Update();
             EditorGUILayout.PropertyField(serializedObject.FindProperty("menuView"), new GUIContent("Radial Menu"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("interactTogglesMenu"), new GUIContent("Interact Toggles Menu"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("radialPuppet"), new GUIContent("Radial Puppet"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("axisPuppet"), new GUIContent("Axis Puppet"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("handGestures"), new GUIContent("Hand Gesture Menu"));
             serializedObject.ApplyModifiedProperties();
 
-            EditorGUILayout.HelpBox("If no radial menu is assigned, one is created automatically when you enter play mode or build.", MessageType.Info);
+            var willCreate = new System.Collections.Generic.List<string>(4);
+            if (serializedObject.FindProperty("menuView").objectReferenceValue == null) willCreate.Add("Radial Menu");
+            if (serializedObject.FindProperty("radialPuppet").objectReferenceValue == null) willCreate.Add("Radial Puppet");
+            if (serializedObject.FindProperty("axisPuppet").objectReferenceValue == null) willCreate.Add("Axis Puppet");
+            if (serializedObject.FindProperty("enableHandGestureEmulation").boolValue
+                && serializedObject.FindProperty("handGestures").objectReferenceValue == null) willCreate.Add("Hand Gesture Menu");
+
+            if (willCreate.Count > 0)
+            {
+                var created = string.Join(", ", willCreate.ToArray());
+                EditorGUILayout.HelpBox($"On play mode or build, the following will be created automatically: {created}.", MessageType.Info);
+            }
+            EndSection();
+        }
+
+        private void DrawSettingsSection()
+        {
+            BeginSection("Settings");
+
+            serializedObject.Update();
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("interactTogglesMenu"), new GUIContent("Interact Toggles Menu"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("enableHandGestureEmulation"), new GUIContent("Enable Hand Gesture Emulation"));
+            serializedObject.ApplyModifiedProperties();
+
+            if (serializedObject.FindProperty("enableHandGestureEmulation").boolValue)
+            {
+                EditorGUILayout.HelpBox("When Hand Gesture Emulation is on, a 'Hand Gestures' wedge appears at the top menu level only if the prop's Animator uses GestureLeft or GestureRight.", MessageType.Info);
+            }
             EndSection();
         }
 
