@@ -26,10 +26,10 @@ namespace UdonExpressionDriver
     public class HandGestureMenu : UdonSharpBehaviour
     {
         [Header("Content")]
-        [SerializeField] [FieldChangeCallback(nameof(LeftGesture))] [Tooltip("Current left-hand gesture index, 0-7")]
+        [SerializeField] [Tooltip("Current left-hand gesture index, 0-7")]
         private int leftGesture;
 
-        [SerializeField] [FieldChangeCallback(nameof(RightGesture))] [Tooltip("Current right-hand gesture index, 0-7")]
+        [SerializeField] [Tooltip("Current right-hand gesture index, 0-7")]
         private int rightGesture;
 
         [Header("Event Handler")]

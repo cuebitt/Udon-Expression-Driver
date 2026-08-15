@@ -317,11 +317,17 @@ namespace UdonExpressionDriver
             return count;
         }
 
-        /// <summary>Base control count for the current level, reserving a slot for the Hand Gestures wedge at the top level.</summary>
+        /// <summary>
+        /// Base control count for the current level. Capped at MaxMenuControls so the Back
+        /// button (auto-prepended to submenus) and Hand Gestures wedge (top-level only) never
+        /// overflow the radial menu's segment array.
+        /// </summary>
         private int _TopLevelBaseControlCount()
         {
             var count = _NextControlStart() - _CurrentControlStart();
             if (count < 0) count = 0;
+            if (count > MaxMenuControls) count = MaxMenuControls;
+            // Reserve a slot for the Hand Gestures wedge at the top level.
             if (_currentMenu == 0 && _HandGesturesVisible() && count > MaxMenuControls - 1) count = MaxMenuControls - 1;
             return count;
         }
@@ -420,8 +426,11 @@ namespace UdonExpressionDriver
             }
 
             if (menuView == null) return;
-            if (!menuView.gameObject.activeSelf) _PlaceMenuView();
+            var wasVisible = menuView.gameObject.activeSelf;
+            if (!wasVisible) _PlaceMenuView();
             menuView._ToggleVisible();
+            // Closing returns to the top level so the next open starts fresh.
+            if (wasVisible) _ResetMenuNavigation();
         }
 
         /// <summary>
@@ -604,8 +613,9 @@ namespace UdonExpressionDriver
 
         /// <summary>
         /// Hides every piece of menu UI (radial menu, puppets, hand-gesture panel) and resets the
-        /// active-control state. Called when the local player loses ownership so a non-owner never
-        /// sees or drives the prop. Null-safe and idempotent.
+        /// active-control state. Navigation state (current menu, stack) is reset to the top level so
+        /// the next open starts fresh, matching VRChat's menu behavior. Called when the local player
+        /// loses ownership so a non-owner never sees or drives the prop. Null-safe and idempotent.
         /// </summary>
         private void _CloseAllMenus()
         {
@@ -615,6 +625,15 @@ namespace UdonExpressionDriver
             if (radialPuppet != null) radialPuppet.gameObject.SetActive(false);
             if (axisPuppet != null) axisPuppet.gameObject.SetActive(false);
             if (handGestures != null) handGestures.gameObject.SetActive(false);
+            _ResetMenuNavigation();
+        }
+
+        /// <summary>Resets the menu to the top level (no saved submenu history).</summary>
+        private void _ResetMenuNavigation()
+        {
+            _currentMenu = 0;
+            _menuStackDepth = 0;
+            _RefreshMenuView();
         }
 
         /// <summary>

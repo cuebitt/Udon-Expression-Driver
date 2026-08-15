@@ -14,10 +14,10 @@ namespace UdonExpressionDriver
     {
         [Header("Content")]
 
-        [SerializeField] [FieldChangeCallback(nameof(Value))] [Range(0, 1)] [Tooltip("Current value from 0 to 1")]
+        [SerializeField, Range(0, 1)] [Tooltip("Current value from 0 to 1")]
         private float value;
 
-        [SerializeField] [FieldChangeCallback(nameof(Label))] [Tooltip("Display label for the header")]
+        [SerializeField] [Tooltip("Display label for the header")]
         private string label = "Radial Puppet";
 
         [Header("Event Handler")]
@@ -42,9 +42,6 @@ namespace UdonExpressionDriver
                 this.value = value;
 
                 if (valueLabel != null) valueLabel.text = $"{this.value * 100:F0}%";
-                // TODO: assigning .value fires the wired OnValueChanged (a spurious _OnPuppetRadial
-                // callback on programmatic sets). Switch to SetValueWithoutNotify once its Udon
-                // exposure is confirmed via Tools > UED > Dump Udon Exposure.
                 if (radialSlider != null) radialSlider.value = this.value;
                 if (lowerSlider != null) lowerSlider.value = this.value;
             }
@@ -61,7 +58,7 @@ namespace UdonExpressionDriver
             }
         }
 
-#if UNITY_EDITOR && !COMPILER_UDONSHARP
+#if !COMPILER_UDONSHARP && UNITY_EDITOR
         public void OnValidate()
         {
             Value = value;
@@ -71,7 +68,7 @@ namespace UdonExpressionDriver
                 EditorApplication.delayCall += () => { if (this == null) return; lowerSlider.SetValueWithoutNotify(value); };
         }
 #endif
-        
+
         public void OnSliderValueChanged()
         {
             Value = lowerSlider.value;

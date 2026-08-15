@@ -20,16 +20,15 @@ namespace UdonExpressionDriver
     {
         [Header("Content")]
         
-        [SerializeField] [FieldChangeCallback(nameof(Label))]
+        [SerializeField] [Tooltip("Display label for the header")]
         private string label = "Axis Puppet";
 
-        [SerializeField] [FieldChangeCallback(nameof(AxisPuppetType))]
-        private AxisPuppetType axisPuppetType = AxisPuppetType.Four;
+        [SerializeField] private AxisPuppetType axisPuppetType = AxisPuppetType.Four;
 
-        [SerializeField] [FieldChangeCallback(nameof(AxisLabels))] [Tooltip("2-axis: [X, Y]; 4-axis: [-X, +X, -Y, +Y]")]
+        [SerializeField] [Tooltip("2-axis: [X, Y]; 4-axis: [-X, +X, -Y, +Y]")]
         private string[] axisLabels = { "-X", "+X", "-Y", "+Y" };
 
-        [SerializeField] [FieldChangeCallback(nameof(PuppetValue))]
+        [SerializeField]
         private Vector2 puppetValue = new Vector2(0.5f, 0.5f);
 
         [Header("Event Handler")]
@@ -110,9 +109,6 @@ namespace UdonExpressionDriver
 
                 _PositionPointer(pv, _valuePanelSize);
 
-                // TODO: assigning .value fires the wired OnValueChanged (a spurious puppet
-                // callback on programmatic sets). Switch to SetValueWithoutNotify once its
-                // Udon exposure is confirmed via Tools > UED > Dump Udon Exposure.
                 if (xAxisSlider != null) xAxisSlider.value = pv.x;
                 if (yAxisSlider != null) yAxisSlider.value = pv.y;
             }
@@ -134,7 +130,7 @@ namespace UdonExpressionDriver
             valuePointer.localPosition = newPos;
         }
 
-#if UNITY_EDITOR && !COMPILER_UDONSHARP
+#if !COMPILER_UDONSHARP && UNITY_EDITOR
         public void OnValidate()
         {
             Label = label;

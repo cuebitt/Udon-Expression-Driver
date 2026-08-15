@@ -16,8 +16,10 @@ namespace UdonExpressionDriver.Editor
     {
         private const int ControlTwoAxis = 3;
         private const int ControlFourAxis = 4;
+        private const int ControlBack = 5;
         private const int ControlRadialPuppet = 6;
         private const int MaxPuppetSubParams = 4;
+        private const int MaxMenuControls = 8;
 
         private struct ControlDef
         {
@@ -173,6 +175,23 @@ namespace UdonExpressionDriver.Editor
             menuIndexMap[menu] = index;
             var controls = new List<ControlDef>();
             menuList.Add(controls);
+
+            // VRChat adds a Back button implicitly to every submenu, but UED's radial menu needs
+            // it explicitly. Prepend a Back control to the first slot of each non-root submenu so
+            // users can navigate up the menu stack. (Skipped on the root level, which has nothing to go back from.)
+            if (index > 0 && menu.controls != null && menu.controls.Count > 0)
+            {
+                controls.Add(new ControlDef
+                {
+                    type = ControlBack,
+                    name = "Back",
+                    icon = null,
+                    paramIndex = -1,
+                    value = 0f,
+                    subMenuIndex = -1,
+                    subParamIndices = null,
+                });
+            }
 
             if (menu.controls == null) return;
 
