@@ -21,7 +21,10 @@ Udon Expression Driver (UED) is a set of tools and runtime scripts for porting V
 - [x] Automatic installer
 - [x] Component-driven setup: `UEDArmatureLink` for positioning, `UEDFullController` for expressions and menu
 - [x] World Armature Link: stick a prop to a player's humanoid bone at runtime
-- [x] Emulated expressions menu (radial menu) driven from the prop's own data
+- [x] Emulated expressions menu driven from the prop's own data
+- [x] Radial and axis puppet controls
+- [x] Hand gesture emulation (drives the Animator's `GestureLeft`/`GestureRight` params)
+- [x] Menu and controls gated to the prop's owner
 - [x] Physbone/Contact event forwarders
   - [x] Physbone event forwarder script
   - [x] Contact event forwarder script
@@ -36,7 +39,11 @@ Udon Expression Driver (UED) is a set of tools and runtime scripts for porting V
 
 Add [my VPM repository](https://cuebitt.github.io/vpm/) to VCC or ALCOM and install `UdonExpressionDriver` into your World project.
 
-Setup is component-driven. Add a `UEDArmatureLink` to a prop prefab and pick the bone it should stick to. For expressions, add a `UEDFullController` and point it at the prop's expressions menu and parameters. Physbone and contact forwarders are added to the prop's children automatically when you enter play mode or build, then removed again afterwards, so your prefab is never changed.
+Setup is component-driven. Add a `UEDArmatureLink` to a prop prefab and pick the bone it should stick to. For expressions, add a `UEDFullController` and point it at the prop's expressions menu and parameters. The controller exposes the prop's menu in front of the player's head, including puppet controls for radial and axis parameters and a hand gesture panel. Only the prop's owner can open the menu or drive its controls, mirroring how an avatar expressions menu behaves.
+
+If the prop already uses VRCFury, `UEDArmatureLink` and `UEDFullController` import their config automatically, so there is no need to rebuild the setup by hand.
+
+Physbone and contact forwarders, and the puppet and gesture controls, are added to the prop's children automatically when you enter play mode or build, then removed again afterwards, so your prefab is never changed.
 
 ## Troubleshooting
 

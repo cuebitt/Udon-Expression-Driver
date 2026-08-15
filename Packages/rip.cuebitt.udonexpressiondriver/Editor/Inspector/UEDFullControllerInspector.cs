@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UdonExpressionDriver;
 using UdonSharpEditor;
 using UnityEditor;
@@ -74,7 +75,7 @@ namespace UdonExpressionDriver.Editor
             EditorGUILayout.PropertyField(serializedObject.FindProperty("handGestures"), new GUIContent("Hand Gesture Menu"));
             serializedObject.ApplyModifiedProperties();
 
-            var willCreate = new System.Collections.Generic.List<string>(4);
+            var willCreate = new List<string>(4);
             if (serializedObject.FindProperty("menuView").objectReferenceValue == null) willCreate.Add("Radial Menu");
             if (serializedObject.FindProperty("radialPuppet").objectReferenceValue == null) willCreate.Add("Radial Puppet");
             if (serializedObject.FindProperty("axisPuppet").objectReferenceValue == null) willCreate.Add("Axis Puppet");
@@ -126,7 +127,8 @@ namespace UdonExpressionDriver.Editor
 
             if (vrcFuryPresent)
             {
-                if (GUILayout.Button("Re-import from VRCFury"))
+                EditorGUILayout.Space(4);
+                if (GUILayout.Button("Re-import from VRCFury", GUILayout.Height(28)))
                     UEDVrcFuryBridge.ReimportFromVrcFury(controller);
             }
             else
@@ -145,7 +147,7 @@ namespace UdonExpressionDriver.Editor
             var (paramCount, controlCount) = UEDVrcFuryBridge.CountData(controller);
 
             BeginSection("Status");
-            EditorGUILayout.LabelField("Data", $"{paramCount} parameter(s), {controlCount} control(s)");
+            EditorGUILayout.LabelField("Data", $"{paramCount} parameter(s), {controlCount} control(s)", EditorStyles.boldLabel);
 
             var serialized = new SerializedObject(controller);
             var animatorProperty = serialized.FindProperty("animator");

@@ -29,12 +29,17 @@ namespace UdonExpressionDriver.Editor
             EditorGUILayout.HelpBox(text, MessageType.Info);
         }
 
+        private static readonly GUIStyle SectionTitleStyle = new GUIStyle(EditorStyles.boldLabel)
+        {
+            margin = new RectOffset(0, 0, 2, 6),
+        };
+
         /// <summary>Starts a titled help-box section grouping inspector fields.</summary>
         protected static void BeginSection(string title)
         {
             EditorGUILayout.Space(8);
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-            EditorGUILayout.LabelField(title, EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(title, SectionTitleStyle);
         }
 
         /// <summary>Ends a section started with <see cref="BeginSection"/>.</summary>

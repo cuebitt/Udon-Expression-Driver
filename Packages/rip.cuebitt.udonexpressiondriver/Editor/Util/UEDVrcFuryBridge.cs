@@ -189,7 +189,7 @@ namespace UdonExpressionDriver.Editor
             var syncedProp = serialized.FindProperty("paramSynced");
             if (namesProp == null) return;
 
-            var addedNames = new System.Collections.Generic.List<string>();
+            var addedNames = new List<string>();
             foreach (var name in new[] { "GestureLeft", "GestureRight" })
             {
                 if (!AnimatorUsesParameter(animator, name)) continue;
