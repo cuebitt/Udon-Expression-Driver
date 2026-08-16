@@ -1,6 +1,7 @@
 ﻿using TMPro;
 using UdonSharp;
 using UnityEngine;
+using VRC.Udon;
 
 namespace UdonExpressionDriver
 {
@@ -18,6 +19,9 @@ namespace UdonExpressionDriver
         [SerializeField] private TMP_Text fourAxisPosY;
         [SerializeField] private TMP_Text gestureLeft;
         [SerializeField] private TMP_Text gestureRight;
+        
+        [Header("Event Handler")]
+        [SerializeField] private UdonBehaviour eventHandler;
 
         public override void _OnPuppetRadial(float value)
         {
@@ -48,6 +52,21 @@ namespace UdonExpressionDriver
                 { "Neutral", "Fist", "HandOpen", "FingerPoint", "Victory", "RockNRoll", "HandGun", "ThumbsUp" };
             if (gestureLeft != null) gestureLeft.text = gestureNames[left];
             if (gestureRight != null) gestureRight.text = gestureNames[right];
+        }
+
+        public void _HandleRadialPuppetHeaderClick()
+        {
+            if (eventHandler != null) eventHandler.SendCustomEvent("ToggleAnimateRadialPuppet");
+        }
+
+        public void _HandleTwoAxisPuppetHeaderClick()
+        {
+            if (eventHandler != null) eventHandler.SendCustomEvent("ToggleAnimateTwoAxisPuppet");
+        }
+
+        public void _HandleFourAxisPuppetHeaderClick()
+        {
+            if (eventHandler != null) eventHandler.SendCustomEvent("ToggleAnimateFourAxisPuppet");
         }
     }
 }
