@@ -183,17 +183,40 @@ namespace UdonExpressionDriver
             var bmf = borderMeshHolder.GetComponent<MeshFilter>();
             if (borders == null)
             {
-                if (bmf != null) bmf.sharedMesh = null;
+                if (bmf != null)
+                {
+                    var oldBorder = bmf.sharedMesh;
+                    bmf.sharedMesh = null;
+                    _DestroyGeneratedMesh(oldBorder);
+                }
                 return;
             }
-            
+
             if (bmf != null)
             {
 #if !COMPILER_UDONSHARP && UNITY_EDITOR
                 borders.hideFlags = HideFlags.DontSave;
 #endif
+                var oldBorderMesh = bmf.sharedMesh;
                 bmf.sharedMesh = borders;
+                _DestroyGeneratedMesh(oldBorderMesh);
             }
+        }
+
+        // Wedge and border meshes are regenerated on every rebuild (menu navigation calls
+        // SetContent); destroy the outgoing mesh so repeated rebuilds don't leak them for the
+        // rest of the session (Unity objects are not garbage-collected mid-scene).
+        private static void _DestroyGeneratedMesh(Mesh mesh)
+        {
+            if (mesh == null) return;
+#if !COMPILER_UDONSHARP && UNITY_EDITOR
+            if (!Application.isPlaying)
+            {
+                Object.DestroyImmediate(mesh);
+                return;
+            }
+#endif
+            Object.Destroy(mesh);
         }
 
         private void _SetupSegmentsNoBorders()
@@ -222,19 +245,24 @@ namespace UdonExpressionDriver
 
                 var mf = meshHolder.GetComponent<MeshFilter>();
                 Mesh colliderMesh = null;
+                Mesh oldMesh = null;
                 if (mf != null)
                 {
                     colliderMesh = CreateWedgeMesh(angleStep, innerRadius, outerRadius, stepsPerWedge);
-                    
+
 #if !COMPILER_UDONSHARP && UNITY_EDITOR
                     colliderMesh.hideFlags = HideFlags.DontSave;
 #endif
-                    
+
+                    oldMesh = mf.sharedMesh;
                     mf.sharedMesh = colliderMesh;
                 }
 
                 var mc = meshHolder.GetComponent<MeshCollider>();
                 if (mc != null && mf != null && colliderMesh != null) mc.sharedMesh = colliderMesh;
+
+                // Destroy last so no filter/collider still holds the outgoing mesh.
+                _DestroyGeneratedMesh(oldMesh);
             }
         }
 

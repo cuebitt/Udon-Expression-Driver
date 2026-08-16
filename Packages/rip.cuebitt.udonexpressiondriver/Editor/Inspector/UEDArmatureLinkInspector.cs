@@ -113,6 +113,8 @@ namespace UdonExpressionDriver.Editor
             for (var i = 0; i < bones.Length; i++)
             {
                 var bone = bones[i];
+                if (bone == HumanBodyBones.LastBone) continue; // enum sentinel, not a real bone
+
                 var region = GetBoneRegion(bone);
                 if (region != previousRegion)
                 {

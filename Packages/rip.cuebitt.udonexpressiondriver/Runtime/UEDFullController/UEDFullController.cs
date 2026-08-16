@@ -159,7 +159,9 @@ namespace UdonExpressionDriver
         }
 
         // Splits params into synced (owner-written, replicated) and local slots, then caches
-        // their Animator hashes so the per-frame write path is pure array reads.
+        // their Animator hashes so the per-frame write path is pure array reads. Synced values
+        // already delivered by the network (OnDeserialization can run before Start on late
+        // joiners) are kept as-is instead of being overwritten with defaults.
         private void _InitParamSlots()
         {
             var count = paramNames.Length;
@@ -169,7 +171,8 @@ namespace UdonExpressionDriver
                 if (i < paramSynced.Length && paramSynced[i]) syncedCount++;
             }
 
-            _syncedValues = new float[syncedCount];
+            var preserveSynced = _syncedValues != null && _syncedValues.Length == syncedCount;
+            if (!preserveSynced) _syncedValues = new float[syncedCount];
             _localValues = new float[count - syncedCount];
             _syncedSlot = new int[count];
             _localSlot = new int[count];
@@ -187,7 +190,7 @@ namespace UdonExpressionDriver
                 if (i < paramSynced.Length && paramSynced[i])
                 {
                     _syncedSlot[i] = syncSlot;
-                    _syncedValues[syncSlot] = def;
+                    if (!preserveSynced) _syncedValues[syncSlot] = def;
                     syncSlot++;
                 }
                 else
@@ -201,6 +204,15 @@ namespace UdonExpressionDriver
 
         public override void OnDeserialization()
         {
+            // A late joiner can receive synced values before Start() has built the slot/hash
+            // arrays; initialize them on demand so the apply below is index-safe and the
+            // received values survive the Start() pass.
+            if (paramNames == null || _paramHashes.Length != paramNames.Length)
+            {
+                _EnsureArrays();
+                _InitParamSlots();
+            }
+
             _ApplyAllToAnimator();
         }
 
@@ -393,9 +405,8 @@ namespace UdonExpressionDriver
         {
             if (menuView == null) return;
 
+            // Already clamped to [0, MaxMenuControls] by _GetCurrentMenuControlCount.
             var count = _GetCurrentMenuControlCount();
-            if (count < 0) count = 0;
-            if (count > MaxMenuControls) count = MaxMenuControls;
 
             var names = new string[count];
             var icons = new Texture2D[count];
@@ -673,6 +684,7 @@ namespace UdonExpressionDriver
         /// </summary>
         public override void _OnHandGesture(int left, int right)
         {
+            if (!_IsOwner()) return;
             if (_gestureLeftIndex >= 0) _SetIntParam(_gestureLeftIndex, left);
             if (_gestureRightIndex >= 0) _SetIntParam(_gestureRightIndex, right);
         }

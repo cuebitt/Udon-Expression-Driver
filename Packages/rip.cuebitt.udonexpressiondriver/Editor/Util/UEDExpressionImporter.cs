@@ -14,6 +14,7 @@ namespace UdonExpressionDriver.Editor
     /// </summary>
     public static class UEDExpressionImporter
     {
+        private const int ControlSubMenu = 2;
         private const int ControlTwoAxis = 3;
         private const int ControlFourAxis = 4;
         private const int ControlBack = 5;
@@ -68,8 +69,11 @@ namespace UdonExpressionDriver.Editor
             // Flatten menus into a flat control list per menu level.
             var menuList = new List<List<ControlDef>>();
             var menuIndexMap = new Dictionary<VRCExpressionsMenu, int>();
+            var truncatedControls = 0;
             seenMenus.Clear();
-            FlattenMenu(menu, menuList, menuIndexMap, seenMenus, paramByName);
+            FlattenMenu(menu, menuList, menuIndexMap, seenMenus, paramByName, ref truncatedControls);
+            if (truncatedControls > 0)
+                Debug.LogWarning($"[UED] Dropped {truncatedControls} control(s) that did not fit the radial menu's {MaxMenuControls} wedges (submenus hold one fewer control because of their Back wedge).", controller);
 
             var controlTypes = new List<int>();
             var controlNames = new List<string>();
@@ -112,19 +116,19 @@ namespace UdonExpressionDriver.Editor
 
             // Write the flattened data into the controller's serialized fields.
             var serialized = new SerializedObject(controller);
-            SetStringArray(serialized, "paramNames", paramNames);
-            SetIntArray(serialized, "paramTypes", paramTypes);
-            SetFloatArray(serialized, "paramDefaults", paramDefaults);
-            SetBoolArray(serialized, "paramSynced", paramSynced);
-            SetIntArray(serialized, "menuControlStart", menuControlStart);
-            SetIntArray(serialized, "controlTypes", controlTypes);
-            SetStringArray(serialized, "controlNames", controlNames);
+            SetArray(serialized, "paramNames", paramNames);
+            SetArray(serialized, "paramTypes", paramTypes);
+            SetArray(serialized, "paramDefaults", paramDefaults);
+            SetArray(serialized, "paramSynced", paramSynced);
+            SetArray(serialized, "menuControlStart", menuControlStart);
+            SetArray(serialized, "controlTypes", controlTypes);
+            SetArray(serialized, "controlNames", controlNames);
             SetTextureArray(serialized, "controlIcons", controlIcons);
-            SetIntArray(serialized, "controlParamIndex", controlParamIndex);
-            SetFloatArray(serialized, "controlValues", controlValues);
-            SetIntArray(serialized, "controlSubmenuIndex", controlSubmenuIndex);
-            SetIntArray(serialized, "controlSubParamStart", controlSubParamStart);
-            SetIntArray(serialized, "controlSubParams", controlSubParams);
+            SetArray(serialized, "controlParamIndex", controlParamIndex);
+            SetArray(serialized, "controlValues", controlValues);
+            SetArray(serialized, "controlSubmenuIndex", controlSubmenuIndex);
+            SetArray(serialized, "controlSubParamStart", controlSubParamStart);
+            SetArray(serialized, "controlSubParams", controlSubParams);
             serialized.ApplyModifiedProperties();
 
             Debug.Log($"[UED] Imported {paramNames.Count} parameter(s), {menuList.Count} menu(s), {controlCount} control(s) into '{controller.name}'.");
@@ -167,7 +171,7 @@ namespace UdonExpressionDriver.Editor
 
         private static void FlattenMenu(VRCExpressionsMenu menu, List<List<ControlDef>> menuList,
             Dictionary<VRCExpressionsMenu, int> menuIndexMap, HashSet<VRCExpressionsMenu> seen,
-            Dictionary<string, int> paramByName)
+            Dictionary<string, int> paramByName, ref int truncatedControls)
         {
             if (menu == null || !seen.Add(menu)) return;
 
@@ -176,10 +180,13 @@ namespace UdonExpressionDriver.Editor
             var controls = new List<ControlDef>();
             menuList.Add(controls);
 
-            // VRChat adds a Back button implicitly to every submenu, but UED's radial menu needs
-            // it explicitly. Prepend a Back control to the first slot of each non-root submenu so
-            // users can navigate up the menu stack. (Skipped on the root level, which has nothing to go back from.)
-            if (index > 0 && menu.controls != null && menu.controls.Count > 0)
+            // The radial menu has MaxMenuControls wedges. VRChat adds a Back button implicitly to
+            // every submenu, but UED's radial menu needs it as an explicit wedge, so a non-root
+            // level gets the Back wedge (even when empty, so an empty submenu is never a dead end)
+            // and one fewer slot for real controls. The runtime clamp would otherwise hide the
+            // overflow controls silently; drop them here so the data matches what is shown.
+            var maxControls = index == 0 ? MaxMenuControls : MaxMenuControls - 1;
+            if (index > 0)
             {
                 controls.Add(new ControlDef
                 {
@@ -201,6 +208,11 @@ namespace UdonExpressionDriver.Editor
 
                 var type = ToControlType(c.type);
                 if (type < 0) continue;
+                if (controls.Count >= maxControls)
+                {
+                    truncatedControls++;
+                    continue;
+                }
 
                 var control = new ControlDef
                 {
@@ -212,11 +224,11 @@ namespace UdonExpressionDriver.Editor
                     subMenuIndex = -1,
                 };
 
-                if (type == 2) // SubMenu
+                if (type == ControlSubMenu)
                 {
                     if (c.subMenu != null)
                     {
-                        FlattenMenu(c.subMenu, menuList, menuIndexMap, seen, paramByName);
+                        FlattenMenu(c.subMenu, menuList, menuIndexMap, seen, paramByName, ref truncatedControls);
                         if (menuIndexMap.TryGetValue(c.subMenu, out var subIndex))
                             control.subMenuIndex = subIndex;
                     }
@@ -245,6 +257,39 @@ namespace UdonExpressionDriver.Editor
             }
         }
 
+        /// <summary>
+        /// Counts the controls <see cref="Import"/> will flatten for a menu, Back wedges and
+        /// per-menu caps included. UEDVrcFuryBridge.NeedsImport compares against this so the
+        /// count check stays in sync with what the importer actually writes.
+        /// </summary>
+        internal static int CountFlattenedControls(VRCExpressionsMenu menu)
+        {
+            return CountFlattenedControls(menu, new HashSet<VRCExpressionsMenu>());
+        }
+
+        private static int CountFlattenedControls(VRCExpressionsMenu menu, HashSet<VRCExpressionsMenu> seen)
+        {
+            if (menu == null || !seen.Add(menu)) return 0;
+
+            var isRoot = seen.Count == 1;
+            var maxControls = isRoot ? MaxMenuControls : MaxMenuControls - 1;
+            var count = isRoot ? 0 : 1; // Back wedge on every non-root submenu
+
+            if (menu.controls == null) return count;
+
+            foreach (var c in menu.controls)
+            {
+                if (c == null) continue;
+                if (ToControlType(c.type) < 0) continue;
+                if (count >= maxControls) break;
+                count++;
+                if (c.type == VRCExpressionsMenu.Control.ControlType.SubMenu)
+                    count += CountFlattenedControls(c.subMenu, seen);
+            }
+
+            return count;
+        }
+
         private static int ToParamType(VRCExpressionParameters.ValueType type)
         {
             switch (type)
@@ -269,40 +314,13 @@ namespace UdonExpressionDriver.Editor
             }
         }
 
-        private static void SetStringArray(SerializedObject so, string field, List<string> values)
+        private static void SetArray<T>(SerializedObject so, string field, List<T> values)
         {
             var property = so.FindProperty(field);
             if (property == null) return;
             property.arraySize = values.Count;
             for (var i = 0; i < values.Count; i++)
-                property.GetArrayElementAtIndex(i).stringValue = values[i] ?? "";
-        }
-
-        private static void SetIntArray(SerializedObject so, string field, List<int> values)
-        {
-            var property = so.FindProperty(field);
-            if (property == null) return;
-            property.arraySize = values.Count;
-            for (var i = 0; i < values.Count; i++)
-                property.GetArrayElementAtIndex(i).intValue = values[i];
-        }
-
-        private static void SetFloatArray(SerializedObject so, string field, List<float> values)
-        {
-            var property = so.FindProperty(field);
-            if (property == null) return;
-            property.arraySize = values.Count;
-            for (var i = 0; i < values.Count; i++)
-                property.GetArrayElementAtIndex(i).floatValue = values[i];
-        }
-
-        private static void SetBoolArray(SerializedObject so, string field, List<bool> values)
-        {
-            var property = so.FindProperty(field);
-            if (property == null) return;
-            property.arraySize = values.Count;
-            for (var i = 0; i < values.Count; i++)
-                property.GetArrayElementAtIndex(i).boolValue = values[i];
+                property.GetArrayElementAtIndex(i).boxedValue = values[i];
         }
 
         private static void SetTextureArray(SerializedObject so, string field, List<Texture2D> values)

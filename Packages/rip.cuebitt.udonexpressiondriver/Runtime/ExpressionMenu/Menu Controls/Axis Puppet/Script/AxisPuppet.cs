@@ -117,6 +117,11 @@ namespace UdonExpressionDriver
         private void Start()
         {
             if (valuePanel != null) _valuePanelSize = valuePanel.sizeDelta;
+
+            // Re-apply: the controller seeds PuppetValue when opening the panel, which can run
+            // before Start (the GameObject is activated and seeded in the same frame), so the
+            // pointer may still be sitting at the panel center from the zero cached size.
+            _PositionPointer(puppetValue, _valuePanelSize);
         }
 
         // Moves the value pointer inside the panel. Panel size comes from _valuePanelSize at

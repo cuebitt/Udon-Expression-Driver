@@ -321,31 +321,12 @@ namespace UdonExpressionDriver.Editor
                 : 0;
 
             var expectedParams = CountParams(menu, parameters);
-            var expectedControls = CountControls(menu);
+            // Mirrors the importer exactly (Back wedges + per-menu caps); a plain count of the
+            // menu's controls would forever differ from the imported data and re-import on
+            // every repaint.
+            var expectedControls = UEDExpressionImporter.CountFlattenedControls(menu);
 
             return paramCount != expectedParams || controlCount != expectedControls;
-        }
-
-        private static int CountControls(VRCExpressionsMenu menu)
-        {
-            return CountControls(menu, new HashSet<VRCExpressionsMenu>());
-        }
-
-        private static int CountControls(VRCExpressionsMenu menu, HashSet<VRCExpressionsMenu> seen)
-        {
-            if (menu == null || !seen.Add(menu) || menu.controls == null) return 0;
-
-            var count = 0;
-            foreach (var c in menu.controls)
-            {
-                if (c == null) continue;
-
-                count++;
-                if (c.type == VRCExpressionsMenu.Control.ControlType.SubMenu)
-                    count += CountControls(c.subMenu, seen);
-            }
-
-            return count;
         }
 
         private static int CountParams(VRCExpressionsMenu menu, VRCExpressionParameters parameters)

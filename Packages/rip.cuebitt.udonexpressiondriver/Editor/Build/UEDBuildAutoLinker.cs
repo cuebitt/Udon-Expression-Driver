@@ -108,13 +108,18 @@ namespace UdonExpressionDriver.Editor
         }
 
         // Every UED behaviour lives somewhere under a scene root; this is the shared walk
-        // used by all the add/revert passes below.
+        // used by all the add/revert passes below. Scans every loaded scene so props in
+        // additively loaded scenes are linked too.
         private static IEnumerable<T> FindInScene<T>() where T : Component
         {
-            var scene = EditorSceneManager.GetActiveScene();
-            foreach (var root in scene.GetRootGameObjects())
-                foreach (var component in root.GetComponentsInChildren<T>(true))
-                    yield return component;
+            for (var i = 0; i < EditorSceneManager.sceneCount; i++)
+            {
+                var scene = EditorSceneManager.GetSceneAt(i);
+                if (!scene.isLoaded) continue;
+                foreach (var root in scene.GetRootGameObjects())
+                    foreach (var component in root.GetComponentsInChildren<T>(true))
+                        yield return component;
+            }
         }
 
         /// <summary>
@@ -179,7 +184,7 @@ namespace UdonExpressionDriver.Editor
 
                 if (EnsureMenuView(controller)) changed = true;
                 if (EnsurePuppets(controller)) changed = true;
-                if (EnsureHandGesturesEnabled(controller) && EnsureHandGestures(controller)) changed = true;
+                if (IsHandGestureEmulationEnabled(controller) && EnsureHandGestures(controller)) changed = true;
 
                 // Idempotently wires VRCFury controller/menu/param data, then applies whatever
                 // assets are stored on the controller (VRCFury's or the Expressions section's).
@@ -295,7 +300,7 @@ namespace UdonExpressionDriver.Editor
         }
 
         /// <summary>True when Hand Gesture Emulation is enabled on the controller.</summary>
-        private static bool EnsureHandGesturesEnabled(UEDFullController controller)
+        private static bool IsHandGestureEmulationEnabled(UEDFullController controller)
         {
             var serialized = new SerializedObject(controller);
             var prop = serialized.FindProperty("enableHandGestureEmulation");
@@ -577,36 +582,12 @@ namespace UdonExpressionDriver.Editor
             return false;
         }
 
-        private static void WriteArray(SerializedProperty prop, List<string> values)
+        private static void WriteArray<T>(SerializedProperty prop, List<T> values)
         {
             if (prop == null) return;
             prop.arraySize = values.Count;
             for (var i = 0; i < values.Count; i++)
-                prop.GetArrayElementAtIndex(i).stringValue = values[i];
-        }
-
-        private static void WriteArray(SerializedProperty prop, List<int> values)
-        {
-            if (prop == null) return;
-            prop.arraySize = values.Count;
-            for (var i = 0; i < values.Count; i++)
-                prop.GetArrayElementAtIndex(i).intValue = values[i];
-        }
-
-        private static void WriteArray(SerializedProperty prop, List<float> values)
-        {
-            if (prop == null) return;
-            prop.arraySize = values.Count;
-            for (var i = 0; i < values.Count; i++)
-                prop.GetArrayElementAtIndex(i).floatValue = values[i];
-        }
-
-        private static void WriteArray(SerializedProperty prop, List<bool> values)
-        {
-            if (prop == null) return;
-            prop.arraySize = values.Count;
-            for (var i = 0; i < values.Count; i++)
-                prop.GetArrayElementAtIndex(i).boolValue = values[i];
+                prop.GetArrayElementAtIndex(i).boxedValue = values[i];
         }
     }
 }

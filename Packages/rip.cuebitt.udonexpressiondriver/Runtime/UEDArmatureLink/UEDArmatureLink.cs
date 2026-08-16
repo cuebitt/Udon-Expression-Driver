@@ -59,6 +59,7 @@ namespace UdonExpressionDriver
         private bool _hasAttachPoint;
         private Vector3 _attachPos;
         private Quaternion _attachRot;
+        private Quaternion _attachRotInv;
 
         private void Start()
         {
@@ -73,6 +74,7 @@ namespace UdonExpressionDriver
             {
                 _attachPos = attachPoint.localPosition;
                 _attachRot = attachPoint.localRotation;
+                _attachRotInv = Quaternion.Inverse(_attachRot);
             }
         }
 
@@ -126,7 +128,7 @@ namespace UdonExpressionDriver
             Vector3 targetPosition;
             if (_hasAttachPoint)
             {
-                targetRotation = boneRotation * Quaternion.Inverse(_attachRot);
+                targetRotation = boneRotation * _attachRotInv;
                 targetPosition = bonePosition - targetRotation * _attachPos;
             }
             else
