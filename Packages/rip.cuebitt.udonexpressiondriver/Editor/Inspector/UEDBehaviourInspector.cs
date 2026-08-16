@@ -29,10 +29,22 @@ namespace UdonExpressionDriver.Editor
             EditorGUILayout.HelpBox(text, MessageType.Info);
         }
 
-        private static readonly GUIStyle SectionTitleStyle = new GUIStyle(EditorStyles.boldLabel)
+        private static GUIStyle _sectionTitleStyle;
+
+        private static GUIStyle SectionTitleStyle
         {
-            margin = new RectOffset(0, 0, 2, 6),
-        };
+            get
+            {
+                // Construct lazily instead of in a static field initializer: Unity forbids
+                // allocating GUIStyle/RectOffset in the ScriptableObject-constructor path.
+                if (_sectionTitleStyle == null)
+                {
+                    _sectionTitleStyle = new GUIStyle(EditorStyles.boldLabel);
+                    _sectionTitleStyle.margin = new RectOffset(0, 0, 2, 6);
+                }
+                return _sectionTitleStyle;
+            }
+        }
 
         /// <summary>Starts a titled help-box section grouping inspector fields.</summary>
         protected static void BeginSection(string title)

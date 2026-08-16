@@ -56,8 +56,8 @@ namespace UdonExpressionDriver
         [SerializeField] private Transform borderMeshHolder;
 
         [Header("Controller")]
-        [Tooltip("Full controller whose expressions menu this radial displays.")]
-        [SerializeField] private UEDFullController fullController;
+        [Tooltip("Menu host whose expressions menu this radial displays.")]
+        [SerializeField] private UEDMenuHost fullController;
 
         [SerializeField, HideInInspector] private bool autoLinked;
 

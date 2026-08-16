@@ -11,7 +11,7 @@ namespace UdonExpressionDriver
     /// Synced parameters are owner-written; all clients apply them to the Animator.
     /// </summary>
     [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
-    public class UEDFullController : UEDBehaviour
+    public class UEDFullController : UEDMenuHost
     {
         private const int ParamTypeFloat = 0;
         private const int ParamTypeInt = 1;
@@ -358,7 +358,7 @@ namespace UdonExpressionDriver
         {
             if (_IsHandGesturesSlot(controlIndex)) return HandGesturesControlName;
 
-            var flat = _CurrentControlStart() + controlIndex;
+            var flat = _DisplayFlat(controlIndex);
             if (controlNames == null || flat < 0 || flat >= controlNames.Length) return "";
             return controlNames[flat];
         }
@@ -367,7 +367,7 @@ namespace UdonExpressionDriver
         {
             if (_IsHandGesturesSlot(controlIndex)) return null;
 
-            var flat = _CurrentControlStart() + controlIndex;
+            var flat = _DisplayFlat(controlIndex);
             if (controlIcons == null || flat < 0 || flat >= controlIcons.Length) return null;
             return controlIcons[flat];
         }
@@ -472,7 +472,7 @@ namespace UdonExpressionDriver
         }
 
         /// <summary>Handles a press on a control within the current menu level.</summary>
-        public void _OnControlPressed(int controlIndex)
+        public override void _OnControlPressed(int controlIndex)
         {
             if (!_IsOwner()) return;
 
@@ -485,8 +485,7 @@ namespace UdonExpressionDriver
                 return;
             }
 
-            var start = _CurrentControlStart();
-            var flat = start + controlIndex;
+            var flat = _DisplayFlat(controlIndex);
             if (controlTypes == null || flat >= controlTypes.Length) return;
 
             var type = controlTypes[flat];
@@ -727,6 +726,46 @@ namespace UdonExpressionDriver
             if (menuControlStart == null) return 0;
             var next = _currentMenu + 1;
             return next < menuControlStart.Length ? menuControlStart[next] : 0;
+        }
+
+        /// <summary>
+        /// Maps a displayed wedge index to its flat control index. A submenu's Back control is
+        /// always shown on the wedge closest to the top of the menu (display index 0), matching
+        /// VRChat's expressions menu; the remaining controls follow in their authored order.
+        /// Levels without a Back control (top level) map 1:1.
+        /// </summary>
+        private int _DisplayFlat(int controlIndex)
+        {
+            var start = _CurrentControlStart();
+            var end = _NextControlStart();
+            if (end < start) end = start;
+
+            var displayCount = end - start;
+            if (displayCount > MaxMenuControls) displayCount = MaxMenuControls;
+
+            var backFlat = -1;
+            if (controlTypes != null)
+            {
+                for (var f = start; f < start + displayCount; f++)
+                {
+                    if (f >= controlTypes.Length) break;
+                    if (controlTypes[f] == ControlBack) { backFlat = f; break; }
+                }
+            }
+
+            if (backFlat < 0) return start + controlIndex;
+
+            if (controlIndex == 0) return backFlat;
+
+            var seen = 0;
+            for (var f = start; f < start + displayCount; f++)
+            {
+                if (f == backFlat) continue;
+                if (seen == controlIndex - 1) return f;
+                seen++;
+            }
+
+            return start + controlIndex;
         }
 
         private int _ControlParam(int flat)

@@ -791,7 +791,7 @@ MonoBehaviour:
       Data: 53|System.RuntimeType, mscorlib
     - Name: 
       Entry: 1
-      Data: UdonExpressionDriver.UEDFullController, UdonExpressionDriver.Runtime
+      Data: UdonExpressionDriver.UEDMenuHost, UdonExpressionDriver.Runtime
     - Name: 
       Entry: 8
       Data: 
@@ -836,7 +836,7 @@ MonoBehaviour:
       Data: 57|UnityEngine.TooltipAttribute, UnityEngine.CoreModule
     - Name: tooltip
       Entry: 1
-      Data: Full controller whose expressions menu this radial displays.
+      Data: Menu host whose expressions menu this radial displays.
     - Name: 
       Entry: 8
       Data: 
